@@ -1,9 +1,8 @@
 #pragma once
+#include <functional>
 
-//It is still not yet certain how the cRIO support will unfold in regards to updated WPI libraries, so until that is settled... enable this to build with cRIO
-//  [1/24/2015 JamesK]
-//#define __USE_LEGACY_WPI_LIBRARIES__
-
+namespace frc
+{
 //This parses out the LUA into two table for each control element... its population properties and LUT
 class COMMON_API Control_Assignment_Properties
 {
@@ -11,6 +10,7 @@ class COMMON_API Control_Assignment_Properties
 		virtual ~Control_Assignment_Properties() {}
 		struct Control_Element_1C
 		{
+			std::string type; //Used to distinguish derived kinds of the same group (e.g. Victor, VictorSP)
 			std::string name;
 			size_t Channel;
 			size_t Module;
@@ -26,7 +26,7 @@ class COMMON_API Control_Assignment_Properties
 
 		virtual void LoadFromScript(Scripting::Script& script);
 
-		const Controls_1C &GetVictors() const {return m_Victors;}
+		const Controls_1C &GetPWMSpeedControllers() const {return m_PWMSpeedControllers;}
 		const Controls_1C &GetServos() const {return m_Servos;}
 		const Controls_1C &GetRelays() const {return m_Relays;}
 		const Controls_1C &GetDigitalInputs() const {return m_Digital_Inputs;}
@@ -36,14 +36,14 @@ class COMMON_API Control_Assignment_Properties
 		size_t GetCompressorRelay() {return m_Compressor_Relay;}
 		size_t GetCompressorLimit() {return m_Compressor_Limit;}
 	private:
-		Controls_1C m_Victors,m_Servos,m_Relays,m_Digital_Inputs,m_Analog_Inputs;
+		Controls_1C m_PWMSpeedControllers,m_Servos,m_Relays,m_Digital_Inputs,m_Analog_Inputs;
 		Controls_2C m_Double_Solenoids,m_Encoders;
-		size_t m_Compressor_Relay,m_Compressor_Limit;
+		size_t m_Compressor_Relay=-1,m_Compressor_Limit=-1;
 };
 
 
 //Add simulated WPILib control elements here... these are to reflect the latest compatible interface with the WPI libraries
-#ifdef Robot_TesterCode
+#ifdef _Win32
 typedef unsigned     int uint32_t;
 typedef unsigned    char uint8_t;
 typedef unsigned	 int UINT32;
@@ -77,19 +77,58 @@ protected:
 	std::string m_Name;
 };
 
-class Victor : public Control_1C_Element_UI
+class PWMSpeedController : public Control_1C_Element_UI
 {
 public:
-	Victor(uint8_t moduleNumber, uint32_t channel,const char *name) : Control_1C_Element_UI(moduleNumber,channel,name),
-	  m_ModuleNumber(moduleNumber), m_Channel(channel) {}
-	virtual void Set(float value, uint8_t syncGroup=0) {m_CurrentVoltage=value; display_number(value);}
-	virtual float Get() {return m_CurrentVoltage;}
+	PWMSpeedController(PWMSpeedController&&) = default;
+	PWMSpeedController& operator=(PWMSpeedController&&) = default;
+
+	virtual void Set(double value, uint8_t syncGroup=0) {m_CurrentVoltage=value; display_number(value);}
+	virtual double Get() {return m_CurrentVoltage;}
 	virtual void Disable() {}
 	//virtual void PIDWrite(float output);
+protected:
+	PWMSpeedController(uint32_t channel) : Control_1C_Element_UI(0, channel, "PWMSpeedController"),
+		m_ModuleNumber(0), m_Channel(channel) {}
+	PWMSpeedController(uint8_t moduleNumber, uint32_t channel, const char *name) : Control_1C_Element_UI(moduleNumber, channel, name),
+		m_ModuleNumber(moduleNumber), m_Channel(channel) {}
 private:
 	uint8_t m_ModuleNumber;
 	uint32_t m_Channel;
-	float m_CurrentVoltage;
+	double m_CurrentVoltage;
+};
+
+class Victor : public PWMSpeedController
+{
+public:
+	Victor(int channel) : PWMSpeedController(0, channel, "Victor") 
+	{
+	}
+	Victor(uint8_t moduleNumber, uint32_t channel, const char *name) : PWMSpeedController(0, channel, name)
+	{
+	}
+	Victor(Victor&&) = default;
+	Victor& operator=(Victor&&) = default;
+};
+
+class VictorSP : public PWMSpeedController
+{
+public:
+	/**
+	 * Constructor for a VictorSP.
+	 *
+	 * @param channel The PWM channel that the VictorSP is attached to. 0-9 are
+	 *                on-board, 10-19 are on the MXP port
+	 */
+	VictorSP(int channel) : PWMSpeedController(0, channel, "VictorSP")
+	{
+	}
+	VictorSP(uint8_t moduleNumber, uint32_t channel, const char *name) : PWMSpeedController(0, channel, name)
+	{
+	}
+
+	VictorSP(VictorSP&&) = default;
+	VictorSP& operator=(VictorSP&&) = default;
 };
 
 class Servo : public Control_1C_Element_UI
@@ -120,7 +159,9 @@ class DigitalInput : public Control_1C_Element_UI
 public:
 	DigitalInput(uint8_t moduleNumber, uint32_t channel,const char *name) : Control_1C_Element_UI(moduleNumber,channel,name,1.0),
 		m_ModuleNumber(moduleNumber), m_Channel(channel) {}
-	uint32_t Get() {return get_number();}
+	DigitalInput(uint32_t channel, const char *name="DigitalInput") : Control_1C_Element_UI(0, channel, name, 1.0),
+		m_ModuleNumber(0), m_Channel(channel) {}
+	uint32_t Get() {return (uint32_t)get_number();}
 	uint32_t GetChannel() {return m_Channel;}
 private:
 	uint8_t m_ModuleNumber;
@@ -148,6 +189,11 @@ public:
 	DoubleSolenoid(uint8_t moduleNumber, uint32_t forwardChannel, uint32_t reverseChannel,const char *name) : 
 		Control_2C_Element_UI(moduleNumber,forwardChannel,reverseChannel,name),
 		m_ModuleNumber(moduleNumber),m_forwardChannel(forwardChannel),m_reverseChannel(reverseChannel) {}
+
+	DoubleSolenoid(uint32_t forwardChannel, uint32_t reverseChannel, const char *name="DoubleSolenoid") :
+		Control_2C_Element_UI(0, forwardChannel, reverseChannel, name),
+		m_ModuleNumber(0), m_forwardChannel(forwardChannel), m_reverseChannel(reverseChannel) {}
+
 	virtual void Set(Value value) {m_CurrentValue=value; display_bool(value==kForward);}
 	virtual Value Get() {return m_CurrentValue=get_bool()?kForward:kReverse;}
 private:
@@ -258,8 +304,9 @@ public:
 	virtual double GetY() {return 0.0;}
 	virtual double GetZ() {return 0.0;}
 };
+#endif
 
-class COMMON_API RobotDrive
+class COMMON_API RobotDrive2
 {
 public:
 	enum MotorType
@@ -267,12 +314,15 @@ public:
 		kFrontLeftMotor = 0,
 		kFrontRightMotor = 1,
 		kRearLeftMotor = 2,
-		kRearRightMotor = 3
+		kRearRightMotor = 3,
+		kCenterLeftMotor = 4,
+		kCenterRightMotor =5
 	};
 
-	RobotDrive(Victor *frontLeftMotor, Victor *rearLeftMotor,Victor *frontRightMotor, Victor *rearRightMotor);
-	RobotDrive(Victor &frontLeftMotor, Victor &rearLeftMotor,Victor &frontRightMotor, Victor &rearRightMotor);
-	virtual ~RobotDrive();
+	RobotDrive2(PWMSpeedController *frontLeftMotor, PWMSpeedController *rearLeftMotor,PWMSpeedController *frontRightMotor, PWMSpeedController *rearRightMotor,
+		PWMSpeedController *centerLeftMotor=nullptr, PWMSpeedController *centerRightMotor=nullptr);
+	RobotDrive2(PWMSpeedController &frontLeftMotor, PWMSpeedController &rearLeftMotor,PWMSpeedController &frontRightMotor, PWMSpeedController &rearRightMotor);
+	virtual ~RobotDrive2();
 
 	virtual void SetLeftRightMotorOutputs(float leftOutput, float rightOutput);
 	virtual void GetLeftRightMotorOutputs(float &leftOutput, float &rightOutput) //I added this one for convenience
@@ -295,15 +345,16 @@ protected:
 
 	//static const int32_t kMaxNumberOfMotors = 4;
 
-	int32_t m_invertedMotors[4];
+	int32_t m_invertedMotors[6];
 	float m_sensitivity;
 	double m_maxOutput;
 	bool m_deleteSpeedControllers;
-	Victor *m_frontLeftMotor;
-	Victor *m_frontRightMotor;
-	Victor *m_rearLeftMotor;
-	Victor *m_rearRightMotor;
-
+	PWMSpeedController *m_frontLeftMotor;
+	PWMSpeedController *m_frontRightMotor;
+	PWMSpeedController *m_rearLeftMotor;
+	PWMSpeedController *m_rearRightMotor;
+	PWMSpeedController *m_centerLeftMotor;
+	PWMSpeedController *m_centerRightMotor;
 private:
 	int32_t GetNumMotors()
 	{
@@ -312,18 +363,20 @@ private:
 		if (m_frontRightMotor) motors++;
 		if (m_rearLeftMotor) motors++;
 		if (m_rearRightMotor) motors++;
+		if (m_centerLeftMotor) motors++;
+		if (m_centerRightMotor) motors++;
 		return motors;
 	}
 	float m_LeftOutput,m_RightOutput;
+	bool m_IsEnabled = false;  //Use to determine if its been enabled for quick disable access
 };
 
 
-#endif
 
 #define LUT_VALID(x) ((index<x.size()) && (x[index]!=(size_t)-1))
 #define IF_LUT(x) if ((index<x.size()) && (x[index]!=(size_t)-1))
 
-#ifdef __USE_LEGACY_WPI_LIBRARIES__
+#ifdef _Win32
 typedef AnalogChannel AnalogInput;
 #endif
 
@@ -331,17 +384,21 @@ class COMMON_API RobotControlCommon
 {
 	public:
 		typedef std::vector<size_t> Controls_LUT;
+		RobotControlCommon();
 		virtual ~RobotControlCommon();
 
-		//victor methods
-		__inline double Victor_GetCurrentPorV(size_t index) {return LUT_VALID(m_VictorLUT)?m_Victors[m_VictorLUT[index]]->Get() : 0.0;}
-		__inline void Victor_UpdateVoltage(size_t index,double Voltage) {IF_LUT(m_VictorLUT) m_Victors[m_VictorLUT[index]]->Set(Voltage);}
-		__inline Victor *Victor_GetInstance(size_t index) {return LUT_VALID(m_VictorLUT)?m_Victors[m_VictorLUT[index]] : NULL;}
+		//PWMSpeedController methods
+		__inline double PWMSpeedController_GetCurrentPorV(size_t index) {return LUT_VALID(m_PWMSpeedControllerLUT)?m_PWMSpeedControllers[m_PWMSpeedControllerLUT[index]]->Get() : 0.0;}
+		__inline void PWMSpeedController_UpdateVoltage(size_t index,double Voltage) {IF_LUT(m_PWMSpeedControllerLUT) m_PWMSpeedControllers[m_PWMSpeedControllerLUT[index]]->Set((float)Voltage);}
+		__inline PWMSpeedController *PWMSpeedController_GetInstance(size_t index) 
+		{
+			return LUT_VALID(m_PWMSpeedControllerLUT)?m_PWMSpeedControllers[m_PWMSpeedControllerLUT[index]] : NULL;
+		}
 
 		//servo methods
 		__inline double Servo_GetCurrentPorV(size_t index) {return LUT_VALID(m_ServoLUT)?m_Servos[m_ServoLUT[index]]->Get() : 0.0;}
 		//Note: we convert the voltage to the -1 - 1 range by adding 1 and dividing by 2
-		__inline void Servo_UpdateVoltage(size_t index,double Voltage) {IF_LUT(m_ServoLUT) m_Servos[m_ServoLUT[index]]->Set((Voltage + 1.0) / 2.0);}
+		__inline void Servo_UpdateVoltage(size_t index,double Voltage) {IF_LUT(m_ServoLUT) m_Servos[m_ServoLUT[index]]->Set((float)((Voltage + 1.0) / 2.0));}
 		__inline Servo *Servo_GetInstance(size_t index) {return LUT_VALID(m_ServoLUT)?m_Servos[m_ServoLUT[index]] : NULL;}
 
 		//solenoid methods
@@ -367,57 +424,42 @@ class COMMON_API RobotControlCommon
 		__inline double Encoder_GetRate(size_t index) {return LUT_VALID(m_EncoderLUT)?m_Encoders[m_EncoderLUT[index]]->GetRate():0.0;}
 		__inline double Encoder_GetDistance(size_t index) {return LUT_VALID(m_EncoderLUT)?m_Encoders[m_EncoderLUT[index]]->GetDistance():0.0;}
 
-		#ifdef __USE_LEGACY_WPI_LIBRARIES__
-		__inline void Encoder_Start(size_t index) { IF_LUT(m_EncoderLUT) m_Encoders[m_EncoderLUT[index]]->Start();}
-		__inline void Encoder_Stop(size_t index)  { IF_LUT(m_EncoderLUT) m_Encoders[m_EncoderLUT[index]]->Stop();}
-		#else
 		__inline void Encoder_Start(size_t index) { }
 		__inline void Encoder_Stop(size_t index)  { }
-		#endif
 
 		__inline void Encoder_Reset(size_t index) {	IF_LUT(m_EncoderLUT) m_Encoders[m_EncoderLUT[index]]->Reset();}
 		__inline void Encoder_SetDistancePerPulse(size_t index,double distancePerPulse) {IF_LUT(m_EncoderLUT) m_Encoders[m_EncoderLUT[index]]->SetDistancePerPulse(distancePerPulse);}
 		__inline void Encoder_SetReverseDirection(size_t index,bool reverseDirection)   {IF_LUT(m_EncoderLUT) m_Encoders[m_EncoderLUT[index]]->SetReverseDirection(reverseDirection);}
-		#ifdef Robot_TesterCode
-		__inline void Encoder_TimeChange(size_t index,double dTime_s,double adjustment_delta) {m_Encoders[m_EncoderLUT[index]]->TimeChange(dTime_s,adjustment_delta);}
+		#ifdef _Win32
+		__inline void Encoder_TimeChange(size_t index,double dTime_s,double adjustment_delta) { IF_LUT(m_EncoderLUT) m_Encoders[m_EncoderLUT[index]]->TimeChange(dTime_s,adjustment_delta);}
 		#endif
 		__inline Encoder2 *Encoder_GetInstance(size_t index) {return LUT_VALID(m_EncoderLUT)?m_Encoders[m_EncoderLUT[index]] : NULL;}
 
 		//analog channel inputs
-		__inline int Analog_GetValue(size_t index) {return LUT_VALID(m_AnalogInputLUT)?m_AnalogInputs[m_AnalogInputLUT[index]]->GetValue():0.0;}
-		__inline int Analog_GetAverageValue(size_t index) {return LUT_VALID(m_AnalogInputLUT)?m_AnalogInputs[m_AnalogInputLUT[index]]->GetAverageValue():0.0;}
+		__inline int Analog_GetValue(size_t index) {return LUT_VALID(m_AnalogInputLUT)?(int)m_AnalogInputs[m_AnalogInputLUT[index]]->GetValue():0;}
+		__inline int Analog_GetAverageValue(size_t index) {return LUT_VALID(m_AnalogInputLUT)?(int)m_AnalogInputs[m_AnalogInputLUT[index]]->GetAverageValue():0;}
 
 		void TranslateToRelay(size_t index,double Voltage);
-		__inline Compressor *CreateCompressor()
-		{
-			#ifdef __USE_LEGACY_WPI_LIBRARIES__
-			return new Compressor(m_Props.GetCompressorLimit(),m_Props.GetCompressorRelay());
-			#else
-			return new Compressor(0);  //This is now the PCM node ID
-			#endif
-		}
+		Compressor *CreateCompressor();
 		__inline void DestroyCompressor(Compressor *instance) {delete instance;}
 
-		#ifndef __USE_LEGACY_WPI_LIBRARIES__
 		__inline Accelerometer *CreateBuiltInAccelerometer()
 		{
 			return new BuiltInAccelerometer();
 		}
 		__inline void DestroyBuiltInAccelerometer(Accelerometer *instance) {delete instance;}
-		#else
-		__inline Accelerometer *CreateBuiltInAccelerometer() {return NULL;}
-		__inline void DestroyBuiltInAccelerometer(void *instance) {}
-		#endif
+		//Give ability to have controls be created externally
+		void SetExternalPWMSpeedControllerHook(std::function<void *(size_t, size_t, const char *,const char *,bool &)> callback) { m_ExternalPWMSpeedController = callback; }
 	protected:
 		virtual void RobotControlCommon_Initialize(const Control_Assignment_Properties &props);
 		//Override by derived class
-		virtual size_t RobotControlCommon_Get_Victor_EnumValue(const char *name) const =0;
+		virtual size_t RobotControlCommon_Get_PWMSpeedController_EnumValue(const char *name) const =0;
 		virtual size_t RobotControlCommon_Get_DigitalInput_EnumValue(const char *name) const =0;
 		virtual size_t RobotControlCommon_Get_AnalogInput_EnumValue(const char *name) const =0;
 		virtual size_t RobotControlCommon_Get_DoubleSolenoid_EnumValue(const char *name) const =0;
 	private:
 		Control_Assignment_Properties m_Props;  //cache a copy of the assignment props
-		std::vector<Victor *> m_Victors;
+		std::vector<PWMSpeedController *> m_PWMSpeedControllers;
 		std::vector<Servo * > m_Servos;
 		std::vector<Relay *> m_Relays;
 		std::vector<DigitalInput *> m_DigitalInputs;
@@ -425,5 +467,7 @@ class COMMON_API RobotControlCommon
 		std::vector<DoubleSolenoid *> m_DoubleSolenoids;
 		std::vector<Encoder2 *> m_Encoders;
 
-		Controls_LUT m_VictorLUT,m_ServoLUT,m_RelayLUT,m_DigitalInputLUT,m_AnalogInputLUT,m_DoubleSolenoidLUT,m_EncoderLUT;
+		Controls_LUT m_PWMSpeedControllerLUT,m_ServoLUT,m_RelayLUT,m_DigitalInputLUT,m_AnalogInputLUT,m_DoubleSolenoidLUT,m_EncoderLUT;
+		std::function<void *(size_t,size_t,const char *,const char *,bool &)> m_ExternalPWMSpeedController;
 };
+}

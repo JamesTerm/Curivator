@@ -1,58 +1,100 @@
 #include "pch.h"
 #include "Robot_Tester.h"
 
-//Stubbed out for now
-class FRC_2019_Control : public FRC_2019_Control_Interface
+#include "../main/cpp/Config/ActiveCollection.h"
+#include "../main/cpp/AutonMain.h"
+
+void SetCommandPromptCallback(std::function<std::string(void)> callback);  //allow this code to manipulate the command prompt
+std::string DefaultCommandPrompt();  //set back for proper closing
+void RobotControlCommon_SetShowControlsCallback(std::function<bool(void)> callback);
+bool RobotControlCommon_ShowControlsDefault();    //set back for proper closing
+
+//This iteration works with the main robot code
+#include "../main/cpp/Robot.h"
+#pragma comment (lib,"x64/debug/RobotLibraries")
+#pragma comment (lib,"x64/debug/TeleopLibraries")
+
+const char * const csz_GameMode_Enum[] =
 {
-public:
-	//from Tank_Drive_Control_Interface,
-	virtual void Tank_Drive_Control_TimeChange(double dTime_s) {}
-	//We need to pass the properties to the Robot Control to be able to make proper conversions.
-	//The client code may cast the properties to obtain the specific data 
-	virtual void Initialize(const Entity_Properties *props) {}
-	virtual void Reset_Encoders() {}
-
-	//Encoders populate this with current velocity of motors
-	virtual void GetLeftRightVelocity(double &LeftVelocity, double &RightVelocity) { LeftVelocity = RightVelocity = 0.0; }
-	virtual void UpdateLeftRightVoltage(double LeftVoltage, double RightVoltage) {}
-
-	//from Robot_Control_Interface,
-	virtual void UpdateVoltage(size_t index, double Voltage) {}
-	//Having both Open and Close makes it easier to make the desired call without applying the not operator
-	virtual void OpenSolenoid(size_t index, bool Open = true) {}
-	virtual void CloseSolenoid(size_t index, bool Close = true) { OpenSolenoid(index, !Close); }
-	virtual bool GetIsSolenoidOpen(size_t index) const { return false; }
-	virtual bool GetIsSolenoidClosed(size_t index) const { return !GetIsSolenoidOpen(index); }
-	/// \ret true if contact is made 
-	virtual bool GetBoolSensorState(size_t index) const { return false; }
-
-	//from  Rotary_Control_Interface
-	virtual void Reset_Rotary(size_t index = 0) {}
-	virtual double GetRotaryCurrentPorV(size_t index = 0) { return 0.0; }
-	virtual void UpdateRotaryVoltage(size_t index, double Voltage) {}
-
-	//This is primarily used for updates to dashboard and driver station during a test build
-	virtual void Robot_Control_TimeChange(double dTime_s) {}
-	//We need to pass the properties to the Robot Control to be able to make proper conversions.
-	//The client code may cast the properties to obtain the specific data 
-	//virtual void Initialize(const Entity_Properties *props)	{}
+	"Auton","TeleOp","Test"
 };
+
+void SetParentBindCallback(std::function<void(AutonMain *,bool)> callback);
 
 class RobotTester_Internal
 {
 private:
-	bool m_IsStreaming=false;
+	bool m_IsStreaming = false;
 	std::future<void> m_TaskState;
-	FRC_2019_Control m_Control;
-	FRC2019_Robot_Properties m_RobotProps;
-	FRC2019_Robot *m_pRobot=nullptr;
-	//Framework::UI::JoyStick_Binder m_JoyBinder;
-	UI_Controller *m_pUI;
-
-	Framework::Base::EventMap m_EventMap;
+	Robot m_Robot;  //what power :)
+	enum GameMode
+	{
+		eAuton,
+		eTeleop,
+		eTest
+	} m_GameMode= eTeleop;  //default is like it is on the driver station
+	bool m_DisplayControls = false;
+	AutonMain *m_pAutonMain=nullptr;  //this is dynamic so we must always check for null
+	bool m_HookSamples = false; //cache incase the call is made while robot is not available
+	std::function<void(AutonMain *,bool)> m_ParentBind = nullptr;
 public:
-	bool GetIsStreaming() const { return m_IsStreaming; }
-	void InitRobot();
+	RobotTester_Internal()
+	{
+		SetCommandPromptCallback(
+			[&](void)
+		{
+			std::string ret = csz_GameMode_Enum[m_GameMode];
+			ret += '>';
+			return ret;
+		});
+		RobotControlCommon_SetShowControlsCallback(
+			[&](void)
+		{
+			return m_DisplayControls;
+		});
+		SetParentBindCallback(
+			[&](AutonMain *instance, bool PropertiesBound)
+		{
+			//call parent first if available
+			if (m_ParentBind)
+				m_ParentBind(instance,PropertiesBound);
+			if (PropertiesBound)
+			{
+				m_pAutonMain = instance;
+				if (m_pAutonMain == nullptr)
+					m_HookSamples = false;  //unhook if we are being destroyed (pedantic)
+				HookSampleGoals(m_HookSamples);
+			}
+		}
+		);
+	}
+	~RobotTester_Internal()
+	{
+		SetCommandPromptCallback(DefaultCommandPrompt);
+		RobotControlCommon_SetShowControlsCallback(RobotControlCommon_ShowControlsDefault);
+		StopStreaming();
+	}
+
+
+	void RobotTester_SetParentBindCallback(std::function<void(AutonMain *,bool)> callback)
+	{
+		m_ParentBind = callback;
+	}
+	void InitRobot()
+	{
+		m_Robot.RobotInit();
+		//Setup callbacks here
+		m_Robot.SetIsEnabledCallback(
+			[&](void)
+			{
+				return m_IsStreaming;
+			});
+		m_Robot.SetIsGameModeCallback(
+			[&](void)
+			{
+				return (int)m_GameMode;  //probably pedantic to cast as an int
+			});
+	}
 
 	void StartStreaming();
 	void StopStreaming()
@@ -69,57 +111,37 @@ public:
 			//Close any other resources here
 		}
 	}
-	RobotTester_Internal()
-	{
+
+	//bool GetIsStreaming() const { return m_IsStreaming; }
+	void SetGameMode(int mode)
+	{	m_GameMode = (GameMode)mode;
 	}
-	~RobotTester_Internal()
-	{
-		StopStreaming();
-		delete m_pRobot;  //checks for null implicitly 
-		m_pRobot = nullptr;
+	//Give command ability to switch to different set of goals
+	void HookSampleGoals(bool hook=true)
+	{	
+		m_HookSamples = hook;
+		//m_Robot.TestCommand(hook?"hook_samples":"default_goals");
+		if (m_pAutonMain)
+		{
+			FRC2019_Robot *_pRobot = dynamic_cast<FRC2019_Robot *>(m_pAutonMain->GetRobot());
+			if (hook)
+			{
+				_pRobot->SetTestAutonCallbackGoal(
+					[](FRC2019_Robot *Robot)
+				{
+					return FRC2019_Goals::Get_Sample_Goal(Robot);
+				});
+			}
+			else 
+				_pRobot->SetTestAutonCallbackGoal(nullptr);
+		}
 	}
-	void operator() (const void*); //TODO work out how to call this directly
+
+	void ShowControls(bool show)
+	{
+		m_DisplayControls = show;
+	}
 };
-
-void RobotTester_Internal::InitRobot()
-{
-	SmartDashboard::init();
-	const bool UseEncoders = false;
-	m_pRobot = new FRC2019_Robot("Curivator_Robot", &m_Control, UseEncoders);
-	{
-		Framework::Scripting::Script script;
-		script.LoadScript("../main/cpp/FRC2019Robot.lua", true);
-		script.NameMap["EXISTING_ENTITIES"] = "EXISTING_SHIPS";
-		m_RobotProps.SetUpGlobalTable(script);
-		m_RobotProps.LoadFromScript(script);
-		//m_Joystick.SetSlotList(m_RobotProps.Get_RobotControls());
-		m_pRobot->Initialize(m_EventMap, &m_RobotProps);
-	}
-	//The script must be loaded before initializing control since the wiring assignments are set there
-	//m_Control.AsControlInterface().Initialize(&m_RobotProps);
-				//Bind the ship's eventmap to the joystick
-	//m_JoyBinder.SetControlledEventMap(m_pRobot->GetEventMap());
-
-	//To to bind the UI controller to the robot
-	AI_Base_Controller *controller = m_pRobot->GetController();
-	assert(controller);
-	//m_pUI = new UI_Controller(m_JoyBinder, controller);
-	m_pUI = new UI_Controller(nullptr, controller);
-	if (controller->Try_SetUIController(m_pUI))
-	{
-		//Success... now to let the entity set things up
-		m_pUI->HookUpUI(true);
-	}
-	else
-	{
-		m_pUI->Set_AI_Base_Controller(NULL);   //no luck... flush ship association
-		assert(false);
-	}
-
-	//start in auton (can manage this later)
-	SmartDashboard::PutBoolean("Test_Auton", true);
-	SmartDashboard::PutNumber("AutonTest", 0.0);
-}
 
 
 template<typename F, typename... Ts>
@@ -134,78 +156,75 @@ __inline void MySleep(double Seconds)
 	std::this_thread::sleep_for(std::chrono::milliseconds(time_ms));
 }
 
-
-void RobotTester_Internal::operator() (const void*)
-{
-	//static int test = 0;
-	//printf("testing %d\n", test++);
-	const double synthetic_delta = 0.01;
-	if (m_pRobot)
-		m_pRobot->TimeChange(synthetic_delta);
-	MySleep(synthetic_delta);
-}
-
-void task_proc(RobotTester_Internal *instance)
-{
-	printf("starting task_proc()\n");
-	void *dummy_ptr = nullptr;
-	while (instance->GetIsStreaming())
-	{
-		//no spin management here:... delegate to client
-		(*instance)(dummy_ptr);
-	}
-	printf("ending task_proc()\n");
-}
-
 void RobotTester_Internal::StartStreaming()
 {
-	//Here is an example where lambda is useful, this avoids the need to pass an instance and call both the operator() and task_proc
-	//I've left them it to compare
-	#if 0
-	if (!m_IsStreaming)
-	{
-		m_IsStreaming = true;
-		m_TaskState = reallyAsync(task_proc, this);
-	}
-	#else
 	if (!m_IsStreaming)
 	{
 		m_IsStreaming = true;
 		//TODO make a reallyAsync that doesn't require an instance
 		m_TaskState = reallyAsync(
-			[&](void *dummy)
+			[](RobotTester_Internal *Instance)
 		{
 			printf("starting task_proc()\n");
-			void *dummy_ptr = nullptr;
-			while (m_IsStreaming)
+			switch (Instance->m_GameMode)
 			{
-				const double synthetic_delta = 0.01;
-				if (m_pRobot)
-					m_pRobot->TimeChange(synthetic_delta);
-				MySleep(synthetic_delta);
+			case RobotTester_Internal::eAuton:
+				Instance->m_Robot.Autonomous();
+				break;
+			case RobotTester_Internal::eTeleop:
+				Instance->m_Robot.OperatorControl();
+				break;
+			case RobotTester_Internal::eTest:
+				Instance->m_Robot.Test();
+				break;
 			}
 			printf("ending task_proc()\n");
 		}
 		, this);
 	}
-	#endif
 }
 
 
 void RobotTester::RobotTester_init()
 {
 	m_p_RobotTester = std::make_shared<RobotTester_Internal>();
+	m_p_RobotTester->InitRobot();  //go ahead and init
 }
 
-#include "../main/cpp/Base/Time_Type.h"
-#pragma comment (lib,"x64/debug/RobotLibraries")
 
-//using namespace Framework::Base;
-
-void RobotTester::Test()
+void RobotTester::Test(int test)
 {
-	//time_type Test = time_type::get_current_time();
-	m_p_RobotTester->InitRobot();
-	//might as well start it
+	m_p_RobotTester->StopStreaming();  //give ability to test consecutively while being able to switch between goal sets
+	SetGameMode(2);
+	m_p_RobotTester->HookSampleGoals(test==1);
 	m_p_RobotTester->StartStreaming();
+}
+
+void RobotTester::SetGameMode(int mode)
+{
+	m_p_RobotTester->SetGameMode(mode);
+}
+
+void RobotTester::StartStreaming()
+{
+	m_p_RobotTester->StartStreaming();
+}
+void RobotTester::StopStreaming()
+{
+	m_p_RobotTester->StopStreaming();
+}
+
+void RobotTester::ShowControls(bool show)
+{
+	m_p_RobotTester->ShowControls(show);
+}
+
+void RobotTester::HookSampleGoals(bool hook)
+{
+	m_p_RobotTester->HookSampleGoals(hook);
+}
+
+void RobotTester::RobotTester_SetParentBindCallback(std::function<void(AutonMain *,bool)> callback)
+{
+	m_p_RobotTester->RobotTester_SetParentBindCallback(callback);
 }

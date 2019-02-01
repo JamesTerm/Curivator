@@ -108,7 +108,7 @@ namespace Framework
 		};
 		//////////////////////////////////////////////////////////////////////////
 
-      class  Key
+		class  Key
       {
          public:
             int key, flags;
@@ -116,8 +116,9 @@ namespace Framework
          {
             if (isShiftChar(key))
             {
+				//Note: pure key commands will appear shifted
                key = unShiftChar(key);
-               assert(false);  //ensure this is not called for robot code
+               //assert(false);  //ensure this is not called for robot code
                //flags |= osgGA::GUIEventAdapter::MODKEY_SHIFT;
             }
          }
@@ -148,7 +149,7 @@ namespace Framework
          bool operator == (const Key& rhs) const { return (key == rhs.key) && (flags == rhs.flags); }
       };
 
-      struct  UserInputEvents
+		struct  UserInputEvents
 		{
 			Event2<Key, bool> KBCB_KeyDnUp;
 			Event1<Key> KBCB_KeyDn;
@@ -176,9 +177,9 @@ namespace Framework
 			// These are the events that get fired by the KBMCB when we are connected
 			UserInputEvents KBM_Events;
 
-			std::map<std::string,Event0,std::greater<std::string> > Event_Map;
-			std::map<std::string,Event1<bool>,std::greater<std::string> > EventOnOff_Map;
-			std::map<std::string,Event1<double>,std::greater<std::string> > EventValue_Map;
+			std::map<std::string,Event0bc,std::greater<std::string> > Event_Map;
+			std::map<std::string,Event1bc<bool>,std::greater<std::string> > EventOnOff_Map;
+			std::map<std::string,Event1bc<double>,std::greater<std::string> > EventValue_Map;
 
 			// Some things are interested in the TIME that an event is fired.  
 			// Usually, this TIME is the current time on whatever timer is being used, BUT
@@ -197,7 +198,15 @@ namespace Framework
 			bool m_KB_Controlled;
 		};	// EventMap
 		//////////////////////////////////////////////////////////////////////////
-
+		//Here is a much lighter weight eventmap which offers the same functionality from the predecessor
+		//It will be much easier to have newer types as needed, but at that point you may as well just make a new
+		//event variable for that use-case
+		struct EventMap2
+		{
+			std::map<std::string, EventV2_0, std::greater<std::string> > Event_Map;
+			std::map<std::string, EventV2_parms<bool>, std::greater<std::string> > EventOnOff_Map;
+			std::map<std::string, EventV2_parms<double>, std::greater<std::string> > EventValue_Map;
+		};
 	}
 }
 

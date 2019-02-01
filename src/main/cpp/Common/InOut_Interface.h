@@ -3,6 +3,9 @@ typedef unsigned short	USHORT;
 typedef	unsigned char	UINT8;
 typedef	unsigned int	UINT32;
 
+namespace frc
+{
+#ifndef _Win32
 ///This class is an Encoder that provides a more accurate way to obtain the current rate
 class Encoder2 : public Encoder
 {
@@ -12,7 +15,7 @@ class Encoder2 : public Encoder
 		Encoder2(UINT8 ModuleNumber, UINT32 aChannel, UINT32 bChannel, bool reverseDirection=false, CounterBase::EncodingType encodingType = k4X);
 
 		///This uses a different technique of obtaining the rate by use of the actual pulse count.  This should produce less noisy results
-		///at higher speeds.  This is simple as it does not support overrlap as it would take about 5 continuous 
+		///at higher speeds.  This is simple as it does not support overlap as it would take about 5 continuous 
 		///hours at 78 rps before the end is reached
 		/// \param dTime_s delta time slice in seconds
 		double GetRate2(double dTime_s);
@@ -21,7 +24,7 @@ class Encoder2 : public Encoder
 	private:
 		double m_LastDistance;  //keep note of last distance
 };
-
+#endif
 
 class Driver_Station_Joystick : public Framework::Base::IJoystick
 {	
@@ -43,3 +46,4 @@ class Driver_Station_Joystick : public Framework::Base::IJoystick
 		DriverStation *m_ds;
 		int m_NoJoysticks,m_StartingPort;
 };
+}

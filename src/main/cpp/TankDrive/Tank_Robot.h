@@ -67,7 +67,7 @@ class Tank_Robot_UI;
 
 const char * const csz_Tank_Robot_SpeedControllerDevices_Enum[] =
 {
-	"left_drive_1","left_drive_2","right_drive_1","right_drive_2"
+	"left_drive_1","left_drive_2","left_drive_3","right_drive_1","right_drive_2","right_drive_3"
 };
 
 ///This is a specific robot that is a robot tank and is composed of an arm, it provides addition methods to control the arm, and applies updates to
@@ -80,8 +80,10 @@ class DRIVE_API Tank_Robot : public Ship_Tester,
 		{
 			eLeftDrive1,
 			eLeftDrive2,
+			eLeftDrive3,
 			eRightDrive1,
-			eRightDrive2
+			eRightDrive2,
+			eRightDrive3
 		};
 
 		static SpeedControllerDevices GetSpeedControllerDevices_Enum (const char *value)
@@ -184,9 +186,9 @@ class DRIVE_API Tank_Robot_Properties : public UI_Ship_Properties
 		EncoderSimulation_Props &EncoderSimulationProps() {return m_EncoderSimulation.EncoderSimulationProps();}
 		#endif
 		//note derived class will populate these properties because of where it is in the script 
-		//const Control_Assignment_Properties &Get_ControlAssignmentProps() const {return m_ControlAssignmentProps;}
+		const frc::Control_Assignment_Properties &Get_ControlAssignmentProps() const {return m_ControlAssignmentProps;}
 	protected:
-		//Control_Assignment_Properties m_ControlAssignmentProps;
+		frc::Control_Assignment_Properties m_ControlAssignmentProps;
 		Tank_Robot_Props m_TankRobotProps;
 	private:
 		#ifndef _Win32
@@ -197,9 +199,8 @@ class DRIVE_API Tank_Robot_Properties : public UI_Ship_Properties
 		#endif
 };
 
-#undef __Tank_TestControlAssignments__
-#if defined Robot_TesterCode && !defined __Tank_TestControlAssignments__
-#include "../Common/Calibration_Testing.h"
+#define __Tank_TestControlAssignments__
+#if defined _Win32 && !defined __Tank_TestControlAssignments__
 
 class DRIVE_API Tank_Robot_Control : public Tank_Drive_Control_Interface
 {
@@ -234,56 +235,56 @@ class DRIVE_API Tank_Robot_Control : public Tank_Drive_Control_Interface
 		double m_dTime_s;  //Stamp the current time delta slice for other functions to use
 };
 #else
-// class DRIVE_API Tank_Robot_Control :  public RobotControlCommon, public Tank_Drive_Control_Interface
-// {
-// 	public:
-// 		Tank_Robot_Control(bool UseSafety=true);
-// 		virtual ~Tank_Robot_Control(); 
-// 		void SetSafety(bool UseSafety);
+class DRIVE_API Tank_Robot_Control :  public frc::RobotControlCommon, public Tank_Drive_Control_Interface
+{
+	public:
+		Tank_Robot_Control(bool UseSafety=true);
+		virtual ~Tank_Robot_Control(); 
+		void SetSafety(bool UseSafety);
 
-// 		virtual void Tank_Drive_Control_TimeChange(double dTime_s);
-// 		#ifdef Robot_TesterCode
-// 		double GetLeftVoltage() const {return 0.0;}
-// 		double GetRightVoltage() const {return 0.0;}
-// 		void SetDisplayVoltage(bool display) {}
-// 		#endif
-// 	protected: //from RobotControlCommon
-// 		virtual size_t RobotControlCommon_Get_Victor_EnumValue(const char *name) const
-// 		{	return Tank_Robot::GetSpeedControllerDevices_Enum(name);
-// 		}
-// 		virtual size_t RobotControlCommon_Get_DigitalInput_EnumValue(const char *name) const  	{	return (size_t)-1;	}
-// 		virtual size_t RobotControlCommon_Get_AnalogInput_EnumValue(const char *name) const  	{	return (size_t)-1;	}
-// 		virtual size_t RobotControlCommon_Get_DoubleSolenoid_EnumValue(const char *name) const 	{	return (size_t)-1;	}
+		virtual void Tank_Drive_Control_TimeChange(double dTime_s);
+		#ifdef Robot_TesterCode
+		double GetLeftVoltage() const {return 0.0;}
+		double GetRightVoltage() const {return 0.0;}
+		void SetDisplayVoltage(bool display) {}
+		#endif
+	protected: //from RobotControlCommon
+		virtual size_t RobotControlCommon_Get_PWMSpeedController_EnumValue(const char *name) const
+		{	return Tank_Robot::GetSpeedControllerDevices_Enum(name);
+		}
+		virtual size_t RobotControlCommon_Get_DigitalInput_EnumValue(const char *name) const  	{	return (size_t)-1;	}
+		virtual size_t RobotControlCommon_Get_AnalogInput_EnumValue(const char *name) const  	{	return (size_t)-1;	}
+		virtual size_t RobotControlCommon_Get_DoubleSolenoid_EnumValue(const char *name) const 	{	return (size_t)-1;	}
 
-// 	protected: //from Robot_Control_Interface
-// 		virtual void Reset_Encoders();
-// 		virtual void Initialize(const Entity_Properties *props);
-// 		virtual void GetLeftRightVelocity(double &LeftVelocity,double &RightVelocity);
-// 		virtual void UpdateLeftRightVoltage(double LeftVoltage,double RightVoltage);
-// 		__inline double RPS_To_LinearVelocity(double RPS);
-// 		__inline double LinearVelocity_To_RPS(double Velocity);
-// 	protected:
-// 		RobotDrive *m_RobotDrive;
+	protected: //from Robot_Control_Interface
+		virtual void Reset_Encoders();
+		virtual void Initialize(const Entity_Properties *props);
+		virtual void GetLeftRightVelocity(double &LeftVelocity,double &RightVelocity);
+		virtual void UpdateLeftRightVoltage(double LeftVoltage,double RightVoltage);
+		__inline double RPS_To_LinearVelocity(double RPS);
+		__inline double LinearVelocity_To_RPS(double Velocity);
+	protected:
+		frc::RobotDrive2 *m_RobotDrive;
 
-// 		double m_RobotMaxSpeed;  //cache this to covert velocity to motor setting
-// 		double m_ArmMaxSpeed;
-// 		double m_dTime_s;  //Stamp the current time delta slice for other functions to use
+		double m_RobotMaxSpeed;  //cache this to covert velocity to motor setting
+		double m_ArmMaxSpeed;
+		double m_dTime_s;  //Stamp the current time delta slice for other functions to use
 		
-// 		#ifdef __UseOwnEncoderScalar__
-// 		double m_EncoderLeftScalar, m_EncoderRightScalar;
-// 		#endif
-// 		Tank_Robot_Props m_TankRobotProps; //cached in the Initialize from specific robot
-// 		#ifdef Robot_TesterCode
-// 		Ship_Props m_ShipProps; //used to simulate encoder
-// 		#endif
-// 	private:
-// 		KalmanFilter m_KalFilter_Arm,m_KalFilter_EncodeLeft,m_KalFilter_EncodeRight;
-// 		Averager<double,4> m_Averager_EncoderLeft, m_Averager_EncodeRight;
-// 		const bool m_UseSafety;
-// 	private:
-// 		//Used for diagnostics, but also may be used for path align information
-// 		void InterpolateVelocities(double LeftLinearVelocity,double RightLinearVelocity,Vec2D &LocalVelocity,double &AngularVelocity,double dTime_s);
-// 	public:
-// 		double Get_dTime_s() const {return m_dTime_s;}
-// };
+		#ifdef __UseOwnEncoderScalar__
+		double m_EncoderLeftScalar, m_EncoderRightScalar;
+		#endif
+		Tank_Robot_Props m_TankRobotProps; //cached in the Initialize from specific robot
+		#ifdef _Win32
+		Ship_Props m_ShipProps; //used to simulate encoder
+		#endif
+	private:
+		KalmanFilter m_KalFilter_Arm,m_KalFilter_EncodeLeft,m_KalFilter_EncodeRight;
+		Averager<double,4> m_Averager_EncoderLeft, m_Averager_EncodeRight;
+		const bool m_UseSafety;
+	private:
+		//Used for diagnostics, but also may be used for path align information
+		void InterpolateVelocities(double LeftLinearVelocity,double RightLinearVelocity,Vec2D &LocalVelocity,double &AngularVelocity,double dTime_s);
+	public:
+		double Get_dTime_s() const {return m_dTime_s;}
+};
 #endif

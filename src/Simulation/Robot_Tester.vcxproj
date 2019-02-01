@@ -106,6 +106,7 @@
       <PreprocessorDefinitions>_DEBUG;_Win32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(ProjectDir)/TeleopLibraries</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -151,15 +152,25 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\main\cpp\AutonMain.h" />
     <ClInclude Include="..\main\cpp\FRC2019_Robot.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Robot_Tester.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\main\cpp\AutonMain.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\main\cpp\FRC2019_Goals.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\main\cpp\FRC2019_Robot.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\main\cpp\SampleGoals.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="pch.cpp">
@@ -177,6 +188,9 @@
     </ProjectReference>
     <ProjectReference Include="SmartDashboard\SmartDashboard.vcxproj">
       <Project>{556fc434-d0c3-4b96-bf29-e9cf5cd24f02}</Project>
+    </ProjectReference>
+    <ProjectReference Include="TeleopLibraries\TeleopLibraries.vcxproj">
+      <Project>{2ab6419f-e1ab-4c0f-9e30-b3732efc683f}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
