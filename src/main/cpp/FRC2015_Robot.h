@@ -1,7 +1,7 @@
 #pragma once
 
 
-class FRC_2019_Control_Interface :	public Tank_Drive_Control_Interface,
+class FRC_2015_Control_Interface :	public Tank_Drive_Control_Interface,
 									public Robot_Control_Interface,
 									public Rotary_Control_Interface
 {
@@ -16,7 +16,7 @@ public:
 	#endif
 };
 
-struct FRC2019_Robot_Props
+struct FRC2015_Robot_Props
 {
 public:
 	//TODO evaluate how this translates into the dart
@@ -44,10 +44,10 @@ public:
 	} Autonomous_Props;
 };
 
-class FRC2019_Robot_Properties : public Tank_Robot_Properties
+class FRC2015_Robot_Properties : public Tank_Robot_Properties
 {
 	public:
-		FRC2019_Robot_Properties();
+		FRC2015_Robot_Properties();
 		virtual void LoadFromScript(Scripting::Script& script);
 
 		const Rotary_Properties &GetTurretProps() const {return m_TurretProps;}
@@ -56,8 +56,8 @@ class FRC2019_Robot_Properties : public Tank_Robot_Properties
 		const Rotary_Pot_Properties &GetArmProps() const {return m_ArmProps;}
 
 		const Tank_Robot_Properties &GetLowGearProps() const {return m_LowGearProps;}
-		const FRC2019_Robot_Props &GetFRC2019RobotProps() const {return m_FRC2019RobotProps;}
-		FRC2019_Robot_Props &GetFRC2019RobotProps_rw() {return m_FRC2019RobotProps;}
+		const FRC2015_Robot_Props &GetFRC2015RobotProps() const {return m_FRC2015RobotProps;}
+		FRC2015_Robot_Props &GetFRC2015RobotProps_rw() {return m_FRC2015RobotProps;}
 		const LUA_Controls_Properties &Get_RobotControls() const {return m_RobotControls;}
 //TODO enable controls
 //		const Control_Assignment_Properties &Get_ControlAssignmentProps() const {return m_ControlAssignmentProps;}
@@ -68,7 +68,7 @@ class FRC2019_Robot_Properties : public Tank_Robot_Properties
 		Rotary_Properties m_TurretProps,m_PitchRampProps,m_KickerWheelProps;
 		Rotary_Pot_Properties m_ArmProps;
 		Tank_Robot_Properties m_LowGearProps;
-		FRC2019_Robot_Props m_FRC2019RobotProps;
+		FRC2015_Robot_Props m_FRC2015RobotProps;
 
 		class ControlEvents : public LUA_Controls_Properties_Interface
 		{
@@ -81,7 +81,7 @@ class FRC2019_Robot_Properties : public Tank_Robot_Properties
 
 //#define __USING_6CIMS__
 
-const char * const csz_FRC2019_Robot_SpeedControllerDevices_Enum[] =
+const char * const csz_FRC2015_Robot_SpeedControllerDevices_Enum[] =
 {
 	"arm","kicker_wheel","CameraLED"
 	#ifdef __USING_6CIMS__
@@ -89,24 +89,24 @@ const char * const csz_FRC2019_Robot_SpeedControllerDevices_Enum[] =
 	#endif
 };
 
-const char * const csz_FRC2019_Robot_SolenoidDevices_Enum[] =
+const char * const csz_FRC2015_Robot_SolenoidDevices_Enum[] =
 {
 	"use_low_gear","fork_left","fork_right"
 };
 
-const char * const csz_FRC2019_Robot_BoolSensorDevices_Enum[] =
+const char * const csz_FRC2015_Robot_BoolSensorDevices_Enum[] =
 {
 	"dart_upper_limit",	"dart_lower_limit"
 };
 
 //Note: rotary systems share the same index as their speed controller counterpart
-const char * const csz_FRC2019_Robot_AnalogInputs_Enum[] =
+const char * const csz_FRC2015_Robot_AnalogInputs_Enum[] =
 {
 	"arm_potentiometer"
 };
 
 
-class FRC2019_Robot : public Tank_Robot
+class FRC2015_Robot : public Tank_Robot
 {
 	public:
 		enum SpeedControllerDevices
@@ -121,7 +121,7 @@ class FRC2019_Robot : public Tank_Robot
 		};
 
 		static SpeedControllerDevices GetSpeedControllerDevices_Enum (const char *value)
-		{	return Enum_GetValue<SpeedControllerDevices> (value,csz_FRC2019_Robot_SpeedControllerDevices_Enum,_countof(csz_FRC2019_Robot_SpeedControllerDevices_Enum));
+		{	return Enum_GetValue<SpeedControllerDevices> (value,csz_FRC2015_Robot_SpeedControllerDevices_Enum,_countof(csz_FRC2015_Robot_SpeedControllerDevices_Enum));
 		}
 
 		enum SolenoidDevices
@@ -132,7 +132,7 @@ class FRC2019_Robot : public Tank_Robot
 		};
 
 		static SolenoidDevices GetSolenoidDevices_Enum (const char *value)
-		{	return Enum_GetValue<SolenoidDevices> (value,csz_FRC2019_Robot_SolenoidDevices_Enum,_countof(csz_FRC2019_Robot_SolenoidDevices_Enum));
+		{	return Enum_GetValue<SolenoidDevices> (value,csz_FRC2015_Robot_SolenoidDevices_Enum,_countof(csz_FRC2015_Robot_SolenoidDevices_Enum));
 		}
 
 		enum BoolSensorDevices
@@ -141,7 +141,7 @@ class FRC2019_Robot : public Tank_Robot
 		};
 
 		static BoolSensorDevices GetBoolSensorDevices_Enum (const char *value)
-		{	return Enum_GetValue<BoolSensorDevices> (value,csz_FRC2019_Robot_BoolSensorDevices_Enum,_countof(csz_FRC2019_Robot_BoolSensorDevices_Enum));
+		{	return Enum_GetValue<BoolSensorDevices> (value,csz_FRC2015_Robot_BoolSensorDevices_Enum,_countof(csz_FRC2015_Robot_BoolSensorDevices_Enum));
 		}
 
 		enum AnalogInputs
@@ -150,10 +150,10 @@ class FRC2019_Robot : public Tank_Robot
 		};
 
 		static AnalogInputs GetAnalogInputs_Enum (const char *value)
-		{	return Enum_GetValue<AnalogInputs> (value,csz_FRC2019_Robot_AnalogInputs_Enum,_countof(csz_FRC2019_Robot_AnalogInputs_Enum));
+		{	return Enum_GetValue<AnalogInputs> (value,csz_FRC2015_Robot_AnalogInputs_Enum,_countof(csz_FRC2015_Robot_AnalogInputs_Enum));
 		}
 
-		FRC2019_Robot(const char EntityName[],FRC_2019_Control_Interface *robot_control,bool IsAutonomous=false);
+		FRC2015_Robot(const char EntityName[],FRC_2015_Control_Interface *robot_control,bool IsAutonomous=false);
 		IEvent::HandlerList ehl;
 		virtual void Initialize(Entity2D_Kind::EventMap& em, const Entity_Properties *props=NULL);
 		virtual void ResetPos();
@@ -163,10 +163,10 @@ class FRC2019_Robot : public Tank_Robot
 		class Turret
 		{
 			private:
-				FRC2019_Robot * const m_pParent;
+				FRC2015_Robot * const m_pParent;
 				double m_Velocity; //adds all axis velocities then assigns on the time change
 			public:
-				Turret(FRC2019_Robot *parent,Rotary_Control_Interface *robot_control);
+				Turret(FRC2015_Robot *parent,Rotary_Control_Interface *robot_control);
 				virtual ~Turret() {}
 				IEvent::HandlerList ehl;
 				virtual void BindAdditionalEventControls(bool Bind);
@@ -180,10 +180,10 @@ class FRC2019_Robot : public Tank_Robot
 		class PitchRamp
 		{
 			private:
-				FRC2019_Robot * const m_pParent;
+				FRC2015_Robot * const m_pParent;
 				double m_Velocity; 
 			public:
-				PitchRamp(FRC2019_Robot *pParent,Rotary_Control_Interface *robot_control);
+				PitchRamp(FRC2015_Robot *pParent,Rotary_Control_Interface *robot_control);
 				virtual ~PitchRamp() {}
 				IEvent::HandlerList ehl;
 				virtual void BindAdditionalEventControls(bool Bind);
@@ -199,7 +199,7 @@ class FRC2019_Robot : public Tank_Robot
 		class Kicker_Wheel : public Rotary_Velocity_Control
 		{
 			public:
-				Kicker_Wheel(FRC2019_Robot *parent,Rotary_Control_Interface *robot_control);
+				Kicker_Wheel(FRC2015_Robot *parent,Rotary_Control_Interface *robot_control);
 				IEvent::HandlerList ehl;
 			protected:
 				//Intercept the time change to send out voltage
@@ -211,14 +211,14 @@ class FRC2019_Robot : public Tank_Robot
 				#ifndef _Win32
 				typedef Rotary_Velocity_Control __super;
 				#endif
-				FRC2019_Robot * const m_pParent;
+				FRC2015_Robot * const m_pParent;
 				double m_Velocity; //adds all axis velocities then assigns on the time change
 		};
 
 		class Robot_Arm : public Rotary_Position_Control
 		{
 			public:
-				Robot_Arm(FRC2019_Robot *parent,Rotary_Control_Interface *robot_control);
+				Robot_Arm(FRC2015_Robot *parent,Rotary_Control_Interface *robot_control);
 				IEvent::HandlerList ehl;
 				//The parent needs to call initialize
 				double HeightToAngle_r(double Height_m) const;
@@ -256,12 +256,12 @@ class FRC2019_Robot : public Tank_Robot
 				void SetTote5Height();
 				void SetTote6Height();
 
-				FRC2019_Robot * const m_pParent;
+				FRC2015_Robot * const m_pParent;
 				bool m_Advance, m_Retract;
 		};
 
-		const FRC2019_Robot_Properties &GetRobotProps() const;
-		FRC2019_Robot_Props::Autonomous_Properties &GetAutonProps();
+		const FRC2015_Robot_Properties &GetRobotProps() const;
+		FRC2015_Robot_Props::Autonomous_Properties &GetAutonProps();
 		//Accessors needed for setting goals
 		Robot_Arm &GetArm() {return m_Arm;}
 		Kicker_Wheel &GetKickerWheel() {return m_Kicker_Wheel;}
@@ -274,12 +274,12 @@ class FRC2019_Robot : public Tank_Robot
 		#ifndef _Win32
 		typedef  Tank_Robot __super;
 		#endif
-		FRC_2019_Control_Interface * const m_RobotControl;
+		FRC_2015_Control_Interface * const m_RobotControl;
 		Turret m_Turret;
 		PitchRamp m_PitchRamp;
 		Kicker_Wheel m_Kicker_Wheel;
 		Robot_Arm m_Arm;
-		FRC2019_Robot_Properties m_RobotProps;  //saves a copy of all the properties
+		FRC2015_Robot_Properties m_RobotProps;  //saves a copy of all the properties
 		Vec2D m_DefensiveKeyPosition;
 		double m_LatencyCounter;
 
@@ -308,18 +308,18 @@ class FRC2019_Robot : public Tank_Robot
 		bool m_SmartDashboard_AutonTest_Valve=false; //Value used to detect change of AutonTest CheckBox
 };
 
-namespace FRC2019_Goals
+namespace FRC2015_Goals
 {
-	Goal *Get_FRC2019_Autonomous(FRC2019_Robot *Robot);
+	Goal *Get_FRC2015_Autonomous(FRC2015_Robot *Robot);
 }
 
 //TODO work out robot control
 #if 0
-class FRC2019_Robot_Control : public RobotControlCommon, public FRC_2019_Control_Interface
+class FRC2015_Robot_Control : public RobotControlCommon, public FRC_2015_Control_Interface
 {
 	public:
-		FRC2019_Robot_Control(bool UseSafety=true);
-		virtual ~FRC2019_Robot_Control();
+		FRC2015_Robot_Control(bool UseSafety=true);
+		virtual ~FRC2015_Robot_Control();
 
 		//This is called per enabled session to enable (on not) things dynamically (e.g. compressor)
 		void ResetPos();
@@ -327,9 +327,9 @@ class FRC2019_Robot_Control : public RobotControlCommon, public FRC_2019_Control
 		void SetSafety(bool UseSafety) {m_TankRobotControl.SetSafety(UseSafety);}
 		#endif
 
-		FRC_2019_Control_Interface &AsControlInterface() {return *this;}
+		FRC_2015_Control_Interface &AsControlInterface() {return *this;}
 
-		const FRC2019_Robot_Properties &GetRobotProps() const {return m_RobotProps;}
+		const FRC2015_Robot_Properties &GetRobotProps() const {return m_RobotProps;}
 	protected: //from Robot_Control_Interface
 		virtual void UpdateVoltage(size_t index,double Voltage);
 		virtual bool GetBoolSensorState(size_t index) const;
@@ -346,18 +346,18 @@ class FRC2019_Robot_Control : public RobotControlCommon, public FRC_2019_Control
 		virtual void UpdateRotaryVoltage(size_t index,double Voltage) {UpdateVoltage(index,Voltage);}
 	protected: //from RobotControlCommon
 		virtual size_t RobotControlCommon_Get_Victor_EnumValue(const char *name) const
-		{	return FRC2019_Robot::GetSpeedControllerDevices_Enum(name);
+		{	return FRC2015_Robot::GetSpeedControllerDevices_Enum(name);
 		}
 		virtual size_t RobotControlCommon_Get_DigitalInput_EnumValue(const char *name) const  
-		{	return FRC2019_Robot::GetBoolSensorDevices_Enum(name);
+		{	return FRC2015_Robot::GetBoolSensorDevices_Enum(name);
 		}
 		virtual size_t RobotControlCommon_Get_AnalogInput_EnumValue(const char *name) const  
-		{	return FRC2019_Robot::GetAnalogInputs_Enum(name);
+		{	return FRC2015_Robot::GetAnalogInputs_Enum(name);
 		}
 		virtual size_t RobotControlCommon_Get_DoubleSolenoid_EnumValue(const char *name) const  
-		{	return FRC2019_Robot::GetSolenoidDevices_Enum(name);
+		{	return FRC2015_Robot::GetSolenoidDevices_Enum(name);
 		}
-	protected: //from FRC_2019_Control_Interface
+	protected: //from FRC_2015_Control_Interface
 		//Will reset various members as needed (e.g. Kalman filters)
 		virtual void Robot_Control_TimeChange(double dTime_s);
 		virtual void Initialize(const Entity_Properties *props);
@@ -366,7 +366,7 @@ class FRC2019_Robot_Control : public RobotControlCommon, public FRC_2019_Control
 		#endif
 
 	protected:
-		FRC2019_Robot_Properties m_RobotProps;  //saves a copy of all the properties
+		FRC2015_Robot_Properties m_RobotProps;  //saves a copy of all the properties
 		Tank_Robot_Control m_TankRobotControl;
 		Tank_Drive_Control_Interface * const m_pTankRobotControl;  //This allows access to protected members
 		Compressor *m_Compressor;
@@ -385,10 +385,10 @@ class FRC2019_Robot_Control : public RobotControlCommon, public FRC_2019_Control
 
 #ifdef Robot_TesterCode
 ///This is only for the simulation where we need not have client code instantiate a Robot_Control
-class FRC2019_Robot_UI : public FRC2019_Robot, public FRC2019_Robot_Control
+class FRC2015_Robot_UI : public FRC2015_Robot, public FRC2015_Robot_Control
 {
 	public:
-		FRC2019_Robot_UI(const char EntityName[]);
+		FRC2015_Robot_UI(const char EntityName[]);
 	protected:
 		virtual void TimeChange(double dTime_s);
 		virtual void Initialize(Entity2D::EventMap& em, const Entity_Properties *props=NULL);

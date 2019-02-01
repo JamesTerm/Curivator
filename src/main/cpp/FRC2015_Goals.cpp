@@ -1,3 +1,4 @@
+#if 0
 //It looks vast, but if you type ctrl k-0 to collapse it is quite small (use ctrl k-j to expand)
 //For VS2017 its ctrl m-o to collapse (m-p to expand)
 //You'll want to keep the Auton_Smart_ inline methods as a tool to quickly work with SmartDashboard
@@ -49,7 +50,7 @@ namespace Robot_Tester
 #else
 #include "Swerve_Robot_UI.h"
 #endif
-#include "FRC2019_Robot.h"
+#include "FRC2015_Robot.h"
 }
 
 using namespace Robot_Tester;
@@ -62,7 +63,7 @@ const double Pi2=M_PI*2.0;
 
 #else
 
-#include "FRC2019_Robot.h"
+#include "FRC2015_Robot.h"
 #include "Common/SmartDashboard.h"
 using namespace Framework::Base;
 using namespace std;
@@ -176,17 +177,17 @@ public:
 
 
   /***********************************************************************************************************************************/
- /*															FRC2019_Goals															*/
+ /*															FRC2015_Goals															*/
 /***********************************************************************************************************************************/
 
 #ifdef Robot_TesterCode
-const double FRC2019Goal_StartingPosition[4]={13.0,4.0,60.0,5.0};
-const double FRC2019Goal_HoverPosition[4]={39.0,0.0,90.0,45.0};
-const double FRC2019Goal_PickupPosition[4]={39.0,-20.0,90.0,45.0};
+const double FRC2015Goal_StartingPosition[4]={13.0,4.0,60.0,5.0};
+const double FRC2015Goal_HoverPosition[4]={39.0,0.0,90.0,45.0};
+const double FRC2015Goal_PickupPosition[4]={39.0,-20.0,90.0,45.0};
 #else
-const double FRC2019Goal_StartingPosition[4]={18.0,4.0,70.0,5.0};
-const double FRC2019Goal_HoverPosition[4]={25.0,0.0,90.0,45.0};
-const double FRC2019Goal_PickupPosition[4]={25.0,-5.0,90.0,45.0};
+const double FRC2015Goal_StartingPosition[4]={18.0,4.0,70.0,5.0};
+const double FRC2015Goal_HoverPosition[4]={25.0,0.0,90.0,45.0};
+const double FRC2015Goal_PickupPosition[4]={25.0,-5.0,90.0,45.0};
 #endif
 
 __inline bool Auton_Smart_GetSingleValue_Bool(const char *SmartName,bool default_value)
@@ -326,31 +327,31 @@ __inline void Auton_Smart_GetMultiValue(size_t NoItems,const char * const SmartN
 //Use this class as an example template, and create your own... at the very bottom MainGoal->AddSubgoal() put your goal there
 //Collapse this to elimate most of the clutter.  Some goals and calls to parts not on this robot have been disabled, but
 //can be traced to determine how to integrate them 1/11/19 -James
-class FRC2019_Goals_Impl : public AtomicGoal
+class FRC2015_Goals_Impl : public AtomicGoal
 {
 	private:
-		FRC2019_Robot &m_Robot;
+		FRC2015_Robot &m_Robot;
 		double m_Timer;
 
 		class SetUpProps
 		{
 		protected:
-			FRC2019_Goals_Impl *m_Parent;
-			FRC2019_Robot &m_Robot;
-			FRC2019_Robot_Props::Autonomous_Properties m_AutonProps;
+			FRC2015_Goals_Impl *m_Parent;
+			FRC2015_Robot &m_Robot;
+			FRC2015_Robot_Props::Autonomous_Properties m_AutonProps;
 			Entity2D_Kind::EventMap &m_EventMap;
 		public:
-			SetUpProps(FRC2019_Goals_Impl *Parent)	: m_Parent(Parent),m_Robot(Parent->m_Robot),m_EventMap(*m_Robot.GetEventMap())
+			SetUpProps(FRC2015_Goals_Impl *Parent)	: m_Parent(Parent),m_Robot(Parent->m_Robot),m_EventMap(*m_Robot.GetEventMap())
 			{	
-				m_AutonProps=m_Robot.GetRobotProps().GetFRC2019RobotProps().Autonomous_Props;
+				m_AutonProps=m_Robot.GetRobotProps().GetFRC2015RobotProps().Autonomous_Props;
 			}
 		};
 		class goal_clock : public AtomicGoal
 		{
 		private:
-			FRC2019_Goals_Impl *m_Parent;
+			FRC2015_Goals_Impl *m_Parent;
 		public:
-			goal_clock(FRC2019_Goals_Impl *Parent)	: m_Parent(Parent) {	m_Status=eInactive;	}
+			goal_clock(FRC2015_Goals_Impl *Parent)	: m_Parent(Parent) {	m_Status=eInactive;	}
 			void Activate()  {	m_Status=eActive;	}
 			Goal_Status Process(double dTime_s)
 			{
@@ -371,9 +372,9 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class goal_watchdog : public AtomicGoal
 		{
 		private:
-			FRC2019_Goals_Impl *m_Parent;
+			FRC2015_Goals_Impl *m_Parent;
 		public:
-			goal_watchdog(FRC2019_Goals_Impl *Parent)	: m_Parent(Parent) {	m_Status=eInactive;	}
+			goal_watchdog(FRC2015_Goals_Impl *Parent)	: m_Parent(Parent) {	m_Status=eInactive;	}
 			void Activate()  {	m_Status=eActive;	}
 			Goal_Status Process(double dTime_s)
 			{
@@ -395,9 +396,9 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		bool m_IsHot;
 		bool m_HasSecondShotFired;
 
-		static Goal * Move_Straight(FRC2019_Goals_Impl *Parent,double length_ft)
+		static Goal * Move_Straight(FRC2015_Goals_Impl *Parent,double length_ft)
 		{
-			FRC2019_Robot *Robot=&Parent->m_Robot;
+			FRC2015_Robot *Robot=&Parent->m_Robot;
 			//Construct a way point
 			WayPoint wp;
 			const Vec2d Local_GoalTarget(0.0,Feet2Meters(length_ft));
@@ -415,17 +416,17 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			return goal_drive;
 		}
 
-		static Goal * Rotate(FRC2019_Goals_Impl *Parent,double Degrees)
+		static Goal * Rotate(FRC2015_Goals_Impl *Parent,double Degrees)
 		{
-			FRC2019_Robot *Robot=&Parent->m_Robot;
+			FRC2015_Robot *Robot=&Parent->m_Robot;
 			return new Goal_Ship_RotateToRelativePosition(Robot->GetController(),DEG_2_RAD(Degrees));
 		}
 
-		// static Goal * Move_TurretPosition(FRC2019_Goals_Impl *Parent,double Angle_Deg, bool RelativePosition=false)
+		// static Goal * Move_TurretPosition(FRC2015_Goals_Impl *Parent,double Angle_Deg, bool RelativePosition=false)
 		// {
-		// 	FRC2019_Robot *Robot=&Parent->m_Robot;
-		// 	FRC2019_Robot::Robot_Arm &Arm=Robot->GetTurret();
-		// 	const double PrecisionTolerance=Robot->GetRobotProps().GetRotaryProps(FRC2019_Robot::eTurret).GetRotaryProps().PrecisionTolerance;
+		// 	FRC2015_Robot *Robot=&Parent->m_Robot;
+		// 	FRC2015_Robot::Robot_Arm &Arm=Robot->GetTurret();
+		// 	const double PrecisionTolerance=Robot->GetRobotProps().GetRotaryProps(FRC2015_Robot::eTurret).GetRotaryProps().PrecisionTolerance;
 		// 	Goal_Rotary_MoveToPosition *goal_arm=NULL;
 		// 	const double position=Angle_Deg;
 		// 	if (!RelativePosition)
@@ -436,7 +437,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		// }
 
 
-		// static Goal * Move_ArmAndBucket(FRC2019_Goals_Impl *Parent,double length_in,double height_in,double Bucket_Angle_Deg,double Clasp_Angle_Deg,
+		// static Goal * Move_ArmAndBucket(FRC2015_Goals_Impl *Parent,double length_in,double height_in,double Bucket_Angle_Deg,double Clasp_Angle_Deg,
 		// 	double length_in_speed=1.0,double height_in_speed=1.0,double Bucket_Angle_Deg_speed=1.0,double Clasp_Angle_Deg_speed=1.0)
 		// {
 		// 	MultitaskGoal *goal=new MultitaskGoal(true);
@@ -454,7 +455,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			std::string m_EventName;
 			bool m_IsOn;
 		public:
-			RobotQuickNotify(FRC2019_Goals_Impl *Parent,const char *EventName, bool On)	: SetUpProps(Parent),m_EventName(EventName),m_IsOn(On)
+			RobotQuickNotify(FRC2015_Goals_Impl *Parent,const char *EventName, bool On)	: SetUpProps(Parent),m_EventName(EventName),m_IsOn(On)
 				{	m_Status=eInactive;	
 				}
 			virtual void Activate() {m_Status=eActive;}
@@ -470,7 +471,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class RobotArmHoldStill : public Generic_CompositeGoal, public SetUpProps
 		{
 		public:
-			RobotArmHoldStill(FRC2019_Goals_Impl *Parent)	: Generic_CompositeGoal(true),SetUpProps(Parent) {	m_Status=eInactive;	}
+			RobotArmHoldStill(FRC2015_Goals_Impl *Parent)	: Generic_CompositeGoal(true),SetUpProps(Parent) {	m_Status=eInactive;	}
 			virtual void Activate()
 			{
 				AddSubgoal(new RobotQuickNotify(m_Parent,"Robot_LockPosition",false));
@@ -487,7 +488,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class MoveForward : public Generic_CompositeGoal, public SetUpProps
 		{
 		public:
-			MoveForward(FRC2019_Goals_Impl *Parent, bool AutoActivate=false)	: Generic_CompositeGoal(AutoActivate),SetUpProps(Parent) 
+			MoveForward(FRC2015_Goals_Impl *Parent, bool AutoActivate=false)	: Generic_CompositeGoal(AutoActivate),SetUpProps(Parent) 
 			{	
 				if(!AutoActivate) 
 					m_Status=eActive;	
@@ -507,7 +508,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class RotateWithWait : public Generic_CompositeGoal, public SetUpProps
 		{
 		public:
-			RotateWithWait(FRC2019_Goals_Impl *Parent, bool AutoActivate=false)	: Generic_CompositeGoal(AutoActivate),SetUpProps(Parent)
+			RotateWithWait(FRC2015_Goals_Impl *Parent, bool AutoActivate=false)	: Generic_CompositeGoal(AutoActivate),SetUpProps(Parent)
 			{	
 				if(!AutoActivate) 
 					m_Status=eActive;	
@@ -527,7 +528,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class TestMoveRotateSequence : public Generic_CompositeGoal, public SetUpProps
 		{
 		public:
-			TestMoveRotateSequence(FRC2019_Goals_Impl *Parent)	: SetUpProps(Parent),m_pParent(Parent) {	m_Status=eActive;	}
+			TestMoveRotateSequence(FRC2015_Goals_Impl *Parent)	: SetUpProps(Parent),m_pParent(Parent) {	m_Status=eActive;	}
 			virtual void Activate()
 			{
 				double dNoIterations=4.0;
@@ -546,12 +547,12 @@ class FRC2019_Goals_Impl : public AtomicGoal
 				m_Status=eActive;
 			}
 		private:
-			FRC2019_Goals_Impl *m_pParent;
+			FRC2015_Goals_Impl *m_pParent;
 		};
 
-		static Goal * GiveRobotSquareWayPointGoal(FRC2019_Goals_Impl *Parent)
+		static Goal * GiveRobotSquareWayPointGoal(FRC2015_Goals_Impl *Parent)
 		{
-			FRC2019_Robot *Robot=&Parent->m_Robot;
+			FRC2015_Robot *Robot=&Parent->m_Robot;
 			const char * const LengthSetting="TestDistance_ft";
 			const double Length_m=Feet2Meters(Auton_Smart_GetSingleValue(LengthSetting,Feet2Meters(1)));
 
@@ -585,14 +586,14 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class SetArmWaypoint : public Generic_CompositeGoal, public SetUpProps
 		{
 		public:
-			SetArmWaypoint(FRC2019_Goals_Impl *Parent,double length_in,double height_in,double bucket_Angle_deg,double clasp_Angle_deg,
+			SetArmWaypoint(FRC2015_Goals_Impl *Parent,double length_in,double height_in,double bucket_Angle_deg,double clasp_Angle_deg,
 				double length_in_speed=1.0,double height_in_speed=1.0,double bucket_Angle_deg_speed=1.0,double clasp_Angle_deg_speed=1.0) : 
 			  SetUpProps(Parent),m_length_in(length_in),m_length_in_speed(length_in_speed),m_height_in(height_in),m_height_in_speed(height_in_speed),
 				  m_bucket_Angle_deg(bucket_Angle_deg),m_bucket_Angle_deg_speed(bucket_Angle_deg_speed),
 				  m_clasp_Angle_deg(clasp_Angle_deg),m_clasp_Angle_deg_speed(clasp_Angle_deg_speed)
 			  {		Activate();  //we can set it up ahead of time
 			  }
-			  SetArmWaypoint(FRC2019_Goals_Impl *Parent) : SetUpProps(Parent)
+			  SetArmWaypoint(FRC2015_Goals_Impl *Parent) : SetUpProps(Parent)
 			  {
 				  //activate is deferred when constructed this way
 				  m_Status=eInactive;
@@ -636,7 +637,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class SetTurretWaypoint : public Generic_CompositeGoal, public SetUpProps
 		{
 		public:
-			SetTurretWaypoint(FRC2019_Goals_Impl *Parent,double Angle_deg) : SetUpProps(Parent),m_Turret_Angle_deg(Angle_deg)
+			SetTurretWaypoint(FRC2015_Goals_Impl *Parent,double Angle_deg) : SetUpProps(Parent),m_Turret_Angle_deg(Angle_deg)
 			{
 				Activate(); //go ahead
 			}
@@ -653,7 +654,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		};
 		
 		#if 0
-		static Goal * TestArmMove(FRC2019_Goals_Impl *Parent)
+		static Goal * TestArmMove(FRC2015_Goals_Impl *Parent)
 		{
 			double length_in=25.0;
 			double height_in=-7.0;
@@ -674,7 +675,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			#endif
 
 		public:
-			ArmMoveToPosition(FRC2019_Goals_Impl *Parent) : SetArmWaypoint(Parent) 
+			ArmMoveToPosition(FRC2015_Goals_Impl *Parent) : SetArmWaypoint(Parent) 
 			{
 				double length_in=25.0;
 				double height_in=-7.0;
@@ -698,7 +699,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			virtual void Activate()
 			{
 				if (m_Status==eInactive)
-					m_EventMap.Event_Map["StopAutonAbort"].Subscribe(m_Robot.ehl,*this, &FRC2019_Goals_Impl::ArmMoveToPosition::StopAuton);
+					m_EventMap.Event_Map["StopAutonAbort"].Subscribe(m_Robot.ehl,*this, &FRC2015_Goals_Impl::ArmMoveToPosition::StopAuton);
 				__super::Activate();
 			}
 			virtual Goal_Status Process(double dTime_s)
@@ -711,7 +712,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 					{
 						const char * const SmartVar_YawAngle="YawAngle";
 						double YawAngle=Auton_Smart_GetSingleValue(SmartVar_YawAngle,0.0);
-						// FRC2019_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
+						// FRC2015_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
 						// const double YawAngleRad=DEG_2_RAD(YawAngle);
 						// const double Position=Arm.GetActualPos()+YawAngleRad;  //set out new position
 						// Arm.SetIntendedPosition(Position);
@@ -725,14 +726,14 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			virtual void Terminate() 
 			{
 				//pacify the set point on the turret
-				// FRC2019_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
+				// FRC2015_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
 				// Arm.SetIntendedPosition(Arm.GetActualPos());
-				m_EventMap.Event_Map["StopAutonAbort"].Remove(*this, &FRC2019_Goals_Impl::ArmMoveToPosition::StopAuton);
+				m_EventMap.Event_Map["StopAutonAbort"].Remove(*this, &FRC2015_Goals_Impl::ArmMoveToPosition::StopAuton);
 				__super::Terminate();
 			}
 		};
 
-		static Goal * TestTurretMove(FRC2019_Goals_Impl *Parent)
+		static Goal * TestTurretMove(FRC2015_Goals_Impl *Parent)
 		{
 			const char * const SmartName="Test_TurretAngle";
 			const double clasp_Angle_deg=Auton_Smart_GetSingleValue(SmartName,0.0);
@@ -742,7 +743,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class ArmGrabSequence : public Generic_CompositeGoal, public SetUpProps
 		{
 		public:
-			ArmGrabSequence(FRC2019_Goals_Impl *Parent,double length_in,double height_in) : 
+			ArmGrabSequence(FRC2015_Goals_Impl *Parent,double length_in,double height_in) : 
 			  SetUpProps(Parent),m_length_in(length_in),m_height_in(height_in)
 			  {		Activate();  //we can set it up ahead of time
 			  }
@@ -750,20 +751,20 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			{
 				if (m_Status==eActive) return;  //allow for multiple calls
 				#ifdef Robot_TesterCode
-				AddSubgoal(new SetArmWaypoint(m_Parent,FRC2019Goal_StartingPosition[0],FRC2019Goal_StartingPosition[1],50.0,-7.0));
+				AddSubgoal(new SetArmWaypoint(m_Parent,FRC2015Goal_StartingPosition[0],FRC2015Goal_StartingPosition[1],50.0,-7.0));
 				#else
-				AddSubgoal(new SetArmWaypoint(m_Parent,FRC2019Goal_StartingPosition[0],FRC2019Goal_StartingPosition[1],65.0,5.0));
+				AddSubgoal(new SetArmWaypoint(m_Parent,FRC2015Goal_StartingPosition[0],FRC2015Goal_StartingPosition[1],65.0,5.0));
 				#endif
 				AddSubgoal(new SetArmWaypoint(m_Parent,m_length_in,m_height_in,40.0,-7.0,1.0,1.0,0.5)); //rotate bucket (slowly)
 				#ifdef Robot_TesterCode
-				AddSubgoal(new SetArmWaypoint(m_Parent,m_length_in,m_height_in,FRC2019Goal_PickupPosition[2],-7.0)); //close clasp
+				AddSubgoal(new SetArmWaypoint(m_Parent,m_length_in,m_height_in,FRC2015Goal_PickupPosition[2],-7.0)); //close clasp
 				#else
-				AddSubgoal(new SetArmWaypoint(m_Parent,m_length_in,m_height_in,FRC2019Goal_PickupPosition[2],5.0)); //close clasp
+				AddSubgoal(new SetArmWaypoint(m_Parent,m_length_in,m_height_in,FRC2015Goal_PickupPosition[2],5.0)); //close clasp
 				#endif
-				AddSubgoal(new SetArmWaypoint(m_Parent,m_length_in,m_height_in,FRC2019Goal_PickupPosition[2],FRC2019Goal_PickupPosition[3]));  //pickup position
-				AddSubgoal(new SetArmWaypoint(m_Parent,m_length_in,FRC2019Goal_HoverPosition[1],FRC2019Goal_HoverPosition[2],FRC2019Goal_HoverPosition[3]));
+				AddSubgoal(new SetArmWaypoint(m_Parent,m_length_in,m_height_in,FRC2015Goal_PickupPosition[2],FRC2015Goal_PickupPosition[3]));  //pickup position
+				AddSubgoal(new SetArmWaypoint(m_Parent,m_length_in,FRC2015Goal_HoverPosition[1],FRC2015Goal_HoverPosition[2],FRC2015Goal_HoverPosition[3]));
 				//TODO move this to another goal once we start working with the turret
-				AddSubgoal(new SetArmWaypoint(m_Parent,FRC2019Goal_StartingPosition[0],FRC2019Goal_StartingPosition[1],FRC2019Goal_StartingPosition[2],FRC2019Goal_StartingPosition[3]));
+				AddSubgoal(new SetArmWaypoint(m_Parent,FRC2015Goal_StartingPosition[0],FRC2015Goal_StartingPosition[1],FRC2015Goal_StartingPosition[2],FRC2015Goal_StartingPosition[3]));
 				m_Status=eActive;
 			}
 		private:
@@ -771,7 +772,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			const double m_height_in;
 		};
 
-		static Goal * TestArmMove2(FRC2019_Goals_Impl *Parent)
+		static Goal * TestArmMove2(FRC2015_Goals_Impl *Parent)
 		{
 			#ifdef Robot_TesterCode
 			double length_in=38.0;
@@ -789,7 +790,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class ArmTurretGrabSequence : public Generic_CompositeGoal, public SetUpProps
 		{
 		public:
-			ArmTurretGrabSequence(FRC2019_Goals_Impl *Parent,double length_in,double height_in,double turret_start_deg,double turret_grab_deg) : 
+			ArmTurretGrabSequence(FRC2015_Goals_Impl *Parent,double length_in,double height_in,double turret_start_deg,double turret_grab_deg) : 
 			  SetUpProps(Parent),m_length_in(length_in),m_height_in(height_in),m_turret_start_deg(turret_start_deg),m_turret_grab_deg(turret_grab_deg)
 			  {		Activate();  //we can set it up ahead of time
 			  }
@@ -800,7 +801,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 				  AddSubgoal(new ArmGrabSequence(m_Parent,m_length_in,m_height_in));
 				  AddSubgoal(new SetTurretWaypoint(m_Parent,m_turret_grab_deg));
 				  AddSubgoal(new SetTurretWaypoint(m_Parent,m_turret_start_deg));
-				  AddSubgoal(new SetArmWaypoint(m_Parent,FRC2019Goal_StartingPosition[0],FRC2019Goal_StartingPosition[1],FRC2019Goal_StartingPosition[2],FRC2019Goal_StartingPosition[3]));
+				  AddSubgoal(new SetArmWaypoint(m_Parent,FRC2015Goal_StartingPosition[0],FRC2015Goal_StartingPosition[1],FRC2015Goal_StartingPosition[2],FRC2015Goal_StartingPosition[3]));
 				  m_Status=eActive;
 			  }
 		private:
@@ -810,7 +811,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			const double m_turret_grab_deg;
 		};
 
-		static Goal * TestArmAndTurret(FRC2019_Goals_Impl * Parent)
+		static Goal * TestArmAndTurret(FRC2015_Goals_Impl * Parent)
 		{
 			double turret_start_in=0;
 			double turret_grab_in=-90.0;
@@ -825,7 +826,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class ClawGrabSequence : public Generic_CompositeGoal, public SetUpProps
 		{
 		public:
-			ClawGrabSequence(FRC2019_Goals_Impl *Parent) : 
+			ClawGrabSequence(FRC2015_Goals_Impl *Parent) : 
 			  SetUpProps(Parent)
 			  {		Activate();  //we can set it up ahead of time
 			  }
@@ -888,13 +889,13 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class TurretTracking : public AtomicGoal, public SetUpProps
 		{
 		public:
-			TurretTracking(FRC2019_Goals_Impl *Parent) : SetUpProps(Parent)
+			TurretTracking(FRC2015_Goals_Impl *Parent) : SetUpProps(Parent)
 			{
 				Activate();  //no need to delay activation
 			}
 			virtual void Activate()
 			{
-				// FRC2019_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
+				// FRC2015_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
 				// m_Position=Arm.GetActualPos(); //start out on the actual position
 				m_LatencyCounter=0.0;
 				m_Status=eActive;
@@ -942,7 +943,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 						m_LatencyCounter+=dTime_s;
 						if (m_LatencyCounter>TrackLatency)
 						{
-							// FRC2019_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
+							// FRC2015_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
 							// const double YawAngleRad=DEG_2_RAD(YawAngle);
 							// m_Position=Arm.GetActualPos()+(YawAngleRad*YawScaleFactor);  //set out new position
 							// if (fabs(YawAngle)>YawTolerance*YawScaleFactor)
@@ -956,7 +957,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			virtual void Terminate() 
 			{
 				//pacify the set point
-				// FRC2019_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
+				// FRC2015_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
 				// Arm.SetIntendedPosition(Arm.GetActualPos());
 				m_Status=eInactive;  //this goal never really completes
 				SmartDashboard::PutBoolean("Main_Is_Targeting",false);
@@ -971,13 +972,13 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		class DriveTracking : public AtomicGoal, public SetUpProps
 		{
 		public:
-			DriveTracking(FRC2019_Goals_Impl *Parent) : SetUpProps(Parent)
+			DriveTracking(FRC2015_Goals_Impl *Parent) : SetUpProps(Parent)
 			{
 				Activate();  //no need to delay activation
 			}
 			virtual void Activate()
 			{
-				// FRC2019_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
+				// FRC2015_Robot::Robot_Arm &Arm=m_Robot.GetTurret();
 				// m_Position=Arm.GetActualPos(); //start out on the actual position
 				m_LatencyCounter=0.0;
 				m_Status=eActive;
@@ -998,7 +999,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 					//printf("AggresiveStop=%d\n",UseAgressiveStop);  //testing flooding
 					SmartDashboard::PutBoolean("UseAggresiveStop",UseAgressiveStop);  //monitor this
 					//TODO add this function (see Curivator)
-					//m_Robot.FRC2019_Robot_SetAggresiveStop(UseAgressiveStop);
+					//m_Robot.FRC2015_Robot_SetAggresiveStop(UseAgressiveStop);
 					m_SAS_FloodControl=UseAgressiveStop;
 				}
 			}
@@ -1141,7 +1142,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		};
 
 	public:
-		FRC2019_Goals_Impl(FRC2019_Robot &robot) : m_Robot(robot), m_Timer(0.0), 
+		FRC2015_Goals_Impl(FRC2015_Robot &robot) : m_Robot(robot), m_Timer(0.0), 
 			m_Primer(false)  //who ever is done first on this will complete the goals (i.e. if time runs out)
 		{
 			m_Status=eInactive;
@@ -1151,7 +1152,7 @@ class FRC2019_Goals_Impl : public AtomicGoal
 			//ensure arm is unfrozen... as we are about to move it
 			m_Robot.GetEventMap()->EventOnOff_Map["Robot_FreezeArm"].Fire(false);
 			m_Primer.AsGoal().Terminate();  //sanity check clear previous session
-			typedef FRC2019_Robot_Props::Autonomous_Properties Autonomous_Properties;
+			typedef FRC2015_Robot_Props::Autonomous_Properties Autonomous_Properties;
 			//pull parameters from SmartDashboard
 			Autonomous_Properties &auton=m_Robot.GetAutonProps();
 			//auton.ShowAutonParameters();  //Grab again now in case user has tweaked values
@@ -1243,12 +1244,13 @@ class FRC2019_Goals_Impl : public AtomicGoal
 		}
 };
 
-Goal *FRC2019_Goals::Get_FRC2019_Autonomous(FRC2019_Robot *Robot)
+Goal *FRC2015_Goals::Get_FRC2015_Autonomous(FRC2015_Robot *Robot)
 {
 	Goal_NotifyWhenComplete *MainGoal=new Goal_NotifyWhenComplete(*Robot->GetEventMap(),"Complete","Failed");
 	//SmartDashboard::PutNumber("Sequence",1.0);  //ensure we are on the right sequence
 	//Inserted in reverse since this is LIFO stack list
-	MainGoal->AddSubgoal(new FRC2019_Goals_Impl(*Robot));
+	MainGoal->AddSubgoal(new FRC2015_Goals_Impl(*Robot));
 	//MainGoal->AddSubgoal(goal_waitforturret);
 	return MainGoal;
 }
+#endif
