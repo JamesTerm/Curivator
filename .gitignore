@@ -158,3 +158,15 @@ bin/
 
 
 # End of https://www.gitignore.io/api/c++,java,linux,macos,gradle,windows,visualstudiocode
+*.user
+*.ilk
+*.pdb
+*.tlog
+*.suo
+*.ipch
+*.db
+*.idb
+*.opendb
+*.db-*
+*.res
+
