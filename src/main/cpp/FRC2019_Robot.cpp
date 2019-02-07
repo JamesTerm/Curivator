@@ -70,11 +70,6 @@ void FRC2019_Robot::Robot_Claw::TimeChange(double dTime_s)
 	__super::TimeChange(dTime_s);
 }
 
-void FRC2019_Robot::Robot_Claw::CloseClaw(bool Close)
-{
-	m_pParent->m_RobotControl->CloseSolenoid(eClaw,Close);
-}
-
 void FRC2019_Robot::Robot_Claw::Grip(bool on)
 {
 	m_Grip=on;
@@ -91,18 +86,413 @@ void FRC2019_Robot::Robot_Claw::BindAdditionalEventControls(bool Bind)
 	if (Bind)
 	{
 		em->EventValue_Map["Claw_SetCurrentVelocity"].Subscribe(ehl,*this, &FRC2019_Robot::Robot_Claw::SetRequestedVelocity_FromNormalized);
-		em->EventOnOff_Map["Claw_Close"].Subscribe(ehl, *this, &FRC2019_Robot::Robot_Claw::CloseClaw);
 		em->EventOnOff_Map["Claw_Grip"].Subscribe(ehl, *this, &FRC2019_Robot::Robot_Claw::Grip);
 		em->EventOnOff_Map["Claw_Squirt"].Subscribe(ehl, *this, &FRC2019_Robot::Robot_Claw::Squirt);
 	}
 	else
 	{
 		em->EventValue_Map["Claw_SetCurrentVelocity"].Remove(*this, &FRC2019_Robot::Robot_Claw::SetRequestedVelocity_FromNormalized);
-		em->EventOnOff_Map["Claw_Close"]  .Remove(*this, &FRC2019_Robot::Robot_Claw::CloseClaw);
 		em->EventOnOff_Map["Claw_Grip"]  .Remove(*this, &FRC2019_Robot::Robot_Claw::Grip);
 		em->EventOnOff_Map["Claw_Squirt"]  .Remove(*this, &FRC2019_Robot::Robot_Claw::Squirt);
 	}
 }
+
+  /***********************************************************************************************************************************/
+ /*													FRC2019_Robot::Robot_Arm_Manager												*/
+/***********************************************************************************************************************************/
+
+//#define __UseArmManual__
+const char *csz_Arm_IntakeDeploy_manual = "Arm_IntakeDeploy_manual";
+const char *csz_Arm_HatchDeploy_manual = "Arm_HatchDeploy_manual";
+const char *csz_Arm_HatchGrabDeploy_manual = "Arm_HatchGrabDeploy_manual";
+double c_HatchDeployTime = 1.0;
+double c_IntakeDeployTime = 1.0;
+double c_HatchGrabDeployTime = 0.75;  //no one is waiting for this
+
+class FRC2019_Robot::Robot_Arm_Manager
+{
+private:
+	Robot_Arm *m_pParent;
+	enum GoalList
+	{
+		eIntake,
+		eHatch,
+		eHatchGrab,
+		eNoGoals
+	};
+	bool m_GoalActive[eNoGoals];
+	bool m_IsIntakeDeployed=false;
+	bool m_IsHatchDeployed=false;
+	bool m_IsHatchGrabExpanded = false;
+	//This is a short scope cache from activate to process... to monitor the desired change
+	bool m_IntendedIntakeDeployed = false;
+	bool m_IntendedHatchDeployed = false;
+	bool m_IntendedHatchGrabExpanded = false;
+	//Goals--- literally able to copy these as-is
+
+	FRC2019_Robot &m_Robot;
+	class SetUpProps
+	{
+	protected:
+		Robot_Arm_Manager *m_Parent;
+		FRC2019_Robot &m_Robot;
+		Entity2D_Kind::EventMap &m_EventMap;
+	public:
+		SetUpProps(Robot_Arm_Manager *Parent) : m_Parent(Parent), m_Robot(Parent->m_Robot), m_EventMap(*m_Robot.GetEventMap())
+		{
+		}
+	};
+	//This makes it easy to notify by name
+	class RobotQuickNotify : public AtomicGoal, public SetUpProps
+	{
+	private:
+		std::string m_EventName;
+		bool m_IsOn;
+	public:
+		RobotQuickNotify(Robot_Arm_Manager *Parent, const char *EventName, bool On) : SetUpProps(Parent), m_EventName(EventName), m_IsOn(On)
+		{
+			m_Status = eInactive;
+		}
+		virtual void Activate() { m_Status = eActive; }
+		virtual Goal_Status Process(double dTime_s)
+		{
+			ActivateIfInactive();
+			m_EventMap.EventOnOff_Map[m_EventName.c_str()].Fire(m_IsOn);
+			m_Status = eCompleted;
+			return m_Status;
+		}
+	};
+
+	//#define __UseSimpleHatchGrip__
+
+	class GoalIntake : public Generic_CompositeGoal, public SetUpProps
+	{
+	public:
+		GoalIntake(Robot_Arm_Manager *Parent) : Generic_CompositeGoal(false), SetUpProps(Parent) 
+			{ 	m_Status = eInactive; 
+			}
+		virtual void Activate(bool IsStowed)
+		{
+			//Check to see if we are already active... then check the direction... if we are in the same direction then its merely flood control
+			//otherwise we have to terminate and refresh with these new goals going in the other direction
+			if (m_Status == eActive)
+			{
+				if (m_Parent->m_IsIntakeDeployed == !IsStowed)
+				{
+					m_Status = eInactive;  //mark inactive... because the work is already done
+					m_Parent->m_GoalActive[eIntake] = false;
+					return;  //no work to do
+				}
+				else
+					Terminate();
+			}
+			m_Parent->m_IntendedIntakeDeployed = !IsStowed;
+			//for the automated hatch grip... any other input will override it
+			#ifndef __UseSimpleHatchGrip__
+			if (m_Parent->m_GoalActive[eHatchGrab])
+				m_Parent->m_GoalHatchGrip.Terminate();
+			#endif
+			//Keep this around for test purposes
+			//m_Parent->mutual_exlude_other_goals(eIntake);
+			AddSubgoal(new Goal_Wait(c_IntakeDeployTime));
+			AddSubgoal(new RobotQuickNotify(m_Parent, csz_Arm_IntakeDeploy_manual, !IsStowed));
+			m_Status = eActive;
+			m_Parent->m_GoalActive[eIntake] = true;
+		}
+		virtual Goal_Status Process(double dTime_s)
+		{
+			if (m_Status == eActive)
+			{
+				//so the logic here... we can always stow, but to deploy the hatch must be stowed
+				bool can_process = true;
+				if (m_Parent->m_IntendedIntakeDeployed)
+				{
+					if ((m_Parent->m_IsHatchDeployed) || (m_Parent->m_GoalActive[eHatch]))
+						can_process = false;
+				}
+				if (can_process)
+				{
+					m_Status = Generic_CompositeGoal::Process(dTime_s);
+					m_Parent->m_GoalActive[eIntake] = m_Status == eActive;
+				}
+			}
+			return m_Status;
+		}
+		virtual void Terminate()
+		{
+			m_Parent->m_GoalActive[eIntake] = false;
+			//since we are interrupted ensure the cached vars reflect the current state
+			//m_Parent->m_IsIntakeDeployed=m_Robot.m_RobotControl->GetIsSolenoidClosed(eIntakeDeploy);
+			Generic_CompositeGoal::Terminate();
+		}
+	};
+
+	class GoalHatch : public Generic_CompositeGoal, public SetUpProps
+	{
+	public:
+		GoalHatch(Robot_Arm_Manager *Parent) : Generic_CompositeGoal(false), SetUpProps(Parent) 
+			{	m_Status = eInactive; 
+			}
+		virtual void Activate(bool IsStowed)
+		{
+			//Check to see if we are already active... then check the direction... if we are in the same direction then its merely flood control
+			//otherwise we have to terminate and refresh with these new goals going in the other direction
+			if (m_Status == eActive)
+			{
+				if (m_Parent->m_IsHatchDeployed == !IsStowed)
+				{
+					m_Status = eInactive;  //mark inactive... because the work is already done
+					m_Parent->m_GoalActive[eHatch] = false;
+					return;  //no work to do
+				}
+				else
+					Terminate();
+			}
+			m_Parent->m_IntendedHatchDeployed = !IsStowed;
+			//for the automated hatch grip... any other input will override it
+			#ifndef __UseSimpleHatchGrip__
+			if (m_Parent->m_GoalActive[eHatchGrab])
+				m_Parent->m_GoalHatchGrip.Terminate();
+			#endif
+			//Keep this around for test purposes
+			//m_Parent->mutual_exlude_other_goals(eHatch);
+			AddSubgoal(new Goal_Wait(c_HatchDeployTime));
+			AddSubgoal(new RobotQuickNotify(m_Parent, csz_Arm_HatchDeploy_manual, !IsStowed));
+			m_Status = eActive;
+			m_Parent->m_GoalActive[eHatch] = true;
+		}
+		virtual Goal_Status Process(double dTime_s)
+		{
+			if (m_Status == eActive)
+			{
+				//so the logic here... we can always stow, but to deploy the intake must be stowed
+				bool can_process = true;
+				if (m_Parent->m_IntendedHatchDeployed)
+				{
+					if ((m_Parent->m_IsIntakeDeployed) || (m_Parent->m_GoalActive[eIntake]))
+						can_process = false;
+				}
+				if (can_process)
+				{
+					m_Status = Generic_CompositeGoal::Process(dTime_s);
+					m_Parent->m_GoalActive[eHatch] = m_Status == eActive;
+				}
+			}
+			return m_Status;
+		}
+		virtual void Terminate()
+		{
+			m_Parent->m_GoalActive[eHatch] = false;
+			//since we are interrupted ensure the cached vars reflect the current state
+			//m_Parent->m_IsHatchDeployed = m_Robot.m_RobotControl->GetIsSolenoidClosed(eHatchDeploy);
+			Generic_CompositeGoal::Terminate();
+		}
+	};
+
+	class GoalHatchGrip : public Generic_CompositeGoal, public SetUpProps
+	{
+	private:
+		bool m_LastDeployStowed = false; //Cache during the deploy session if the hatch was stowed as we retain the last state when we stow the grabber
+	public:
+		GoalHatchGrip(Robot_Arm_Manager *Parent) : Generic_CompositeGoal(false), SetUpProps(Parent)
+		{
+			m_Status = eInactive;
+		}
+		virtual void Activate(bool IsStowed)
+		{
+			//Check to see if we are already active... then check the direction... if we are in the same direction then its merely flood control
+			//otherwise we have to terminate and refresh with these new goals going in the other direction
+			if (m_Status == eActive)
+			{
+				if (m_Parent->m_IsHatchGrabExpanded == !IsStowed)
+				{
+					m_Status = eInactive;  //mark inactive... because the work is already done
+					m_Parent->m_GoalActive[eHatchGrab] = false;
+					return;  //no work to do
+				}
+				else
+					Terminate();
+			}
+
+			m_Parent->m_IntendedHatchGrabExpanded = !IsStowed;
+
+			//We'll override the other goals if using the automated version, note it's easier to trace code if we handle this before adding any new goals
+			#ifndef __UseSimpleHatchGrip__
+			m_Parent->mutual_exlude_other_goals(eHatchGrab);
+			#endif
+
+			#ifdef __UseSimpleHatchGrip__
+			//Go ahead add these goals... but we may add more keep reading
+			AddSubgoal(new Goal_Wait(1.0));
+			AddSubgoal(new RobotQuickNotify(m_Parent, csz_Arm_HatchGrabDeploy_manual, !IsStowed));
+			#else	
+			if (!IsStowed)
+			{
+				m_LastDeployStowed = !m_Parent->m_IsHatchDeployed; //cache this... this will be the state we return when stowing the grabber
+
+				//Go ahead add these goals... but we may add more keep reading
+				AddSubgoal(new Goal_Wait(1.0));
+				AddSubgoal(new RobotQuickNotify(m_Parent, csz_Arm_HatchGrabDeploy_manual, !IsStowed));
+
+				//This one is more automated it will add to stow the intake and deploy the hatch as needed
+				//This is in reverse so we start with the hatch being deployed
+				if (!m_Parent->m_IsHatchDeployed)
+				{
+					//rather than activate the other goals (messy and could cause recursion)-- just add the goals here
+					AddSubgoal(new Goal_Wait(c_HatchDeployTime));
+					AddSubgoal(new RobotQuickNotify(m_Parent, csz_Arm_HatchDeploy_manual, true));
+					m_Parent->m_IsHatchDeployed = true;
+				}
+				//Now to see about the intake... it must be stowed
+				if (m_Parent->m_IsIntakeDeployed)
+				{
+					AddSubgoal(new Goal_Wait(c_IntakeDeployTime));
+					AddSubgoal(new RobotQuickNotify(m_Parent, csz_Arm_IntakeDeploy_manual, false));
+					m_Parent->m_IsIntakeDeployed = false;
+				}
+			}
+			else
+			{
+				//for stowing... let's stow the hatch as well
+				if ((m_Parent->m_IsHatchDeployed)&&(m_LastDeployStowed))
+				{
+					AddSubgoal(new Goal_Wait(c_HatchDeployTime));
+					AddSubgoal(new RobotQuickNotify(m_Parent, csz_Arm_HatchDeploy_manual, false));
+					m_Parent->m_IsHatchDeployed = false;
+				}
+				//Go ahead add these goals... but we may add more keep reading
+				AddSubgoal(new Goal_Wait(1.0));
+				AddSubgoal(new RobotQuickNotify(m_Parent, csz_Arm_HatchGrabDeploy_manual, !IsStowed));
+			}
+			#endif
+			//go ahead and activate
+			m_Status = eActive;
+			m_Parent->m_GoalActive[eHatchGrab] = true;
+		}
+		virtual Goal_Status Process(double dTime_s)
+		{
+			if (m_Status == eActive)
+			{
+				//This is the safe logic... it makes sure its safe to deploy just like hatch (it can deploy whether or not the hatch is)
+				#ifdef __UseSimpleHatchGrip__
+				//so the logic here... we can always stow, but to deploy the intake must be stowed
+				bool can_process = true;
+				if (m_Parent->m_IsHatchGrabExpanded)
+				{
+					if ((m_Parent->m_IsIntakeDeployed) || (m_Parent->m_GoalActive[eIntake]))
+						can_process = false;
+				}
+				if (can_process)
+				{
+					m_Status = Generic_CompositeGoal::Process(dTime_s);
+					m_Parent->m_GoalActive[eHatchGrab] = m_Status == eActive;
+				}
+				#else
+				//The goals should protect any issues... so we can just process them
+				m_Status = Generic_CompositeGoal::Process(dTime_s);
+				m_Parent->m_GoalActive[eHatchGrab] = m_Status == eActive;
+				#endif
+			}
+			return m_Status;
+		}
+		virtual void Terminate()
+		{
+			m_Parent->m_GoalActive[eHatchGrab] = false;
+			#if 0
+			//since we are interrupted ensure the cached vars reflect the current state
+			//we've taken control of all of them so we'll need to update all of them
+			m_Parent->m_IsHatchGrabExpanded = m_Robot.m_RobotControl->GetIsSolenoidClosed(eHatchGrabDeploy);
+			m_Parent->m_IsHatchDeployed = m_Robot.m_RobotControl->GetIsSolenoidClosed(eHatchDeploy);
+			m_Parent->m_IsIntakeDeployed = m_Robot.m_RobotControl->GetIsSolenoidClosed(eIntakeDeploy);
+			#endif
+			Generic_CompositeGoal::Terminate();
+		}
+	};
+
+	GoalIntake m_GoalIntake=this;
+	GoalHatch m_GoalHatch=this;
+	GoalHatchGrip m_GoalHatchGrip = this;
+	//There should never be a reason to terminate, but I'm keeping around in case we run into a situation where it becomes necessary
+	void mutual_exlude_other_goals(GoalList active_goal)
+	{
+		for (size_t i=0;i< eNoGoals;i++)
+		{
+			if (i == active_goal) continue;
+			else
+			{
+				switch (i)
+				{
+				case eIntake:
+					m_GoalIntake.Terminate();
+					break;
+				case eHatch:
+					m_GoalHatch.Terminate();
+					break;
+				}
+			}
+		}
+	}
+
+public: 
+	Robot_Arm_Manager(Robot_Arm *parent) : m_pParent(parent),m_Robot(*m_pParent->m_pParent)
+	{
+		for (size_t i = 0; i < eNoGoals; i++)
+			m_GoalActive[i] = false;
+	}
+	void TimeChange(double dTime_s)
+	{
+		m_GoalIntake.Process(dTime_s);
+		m_GoalHatch.Process(dTime_s);
+		m_GoalHatchGrip.Process(dTime_s);
+	}
+	void ResetPos()
+	{
+		//Update solenoids to use the accessor functions properly
+		CloseIntake_manual(false);
+		CloseHatchDeploy_manual(false);
+		CloseHatchGrabDeploy_manual(false);
+	}
+
+	void CloseIntake_manual(bool Close)
+	{
+		m_pParent->m_pParent->m_RobotControl->CloseSolenoid(eIntakeDeploy, Close);
+		m_IsIntakeDeployed = Close;
+	}
+	void CloseHatchDeploy_manual(bool Close)
+	{
+		m_pParent->m_pParent->m_RobotControl->CloseSolenoid(eHatchDeploy, Close);
+		m_IsHatchDeployed = Close;
+	}
+	void CloseHatchGrabDeploy_manual(bool Close)
+	{
+		m_pParent->m_pParent->m_RobotControl->CloseSolenoid(eHatchGrabDeploy, Close);
+		m_IsHatchGrabExpanded = Close;
+	}
+	void CloseIntake(bool Close)
+	{
+		#ifdef __UseArmManual__
+		CloseIntake_manual(Close);
+		#else
+		m_GoalIntake.Activate(!Close);
+		#endif
+	}
+	void CloseHatchDeploy(bool Close)
+	{
+		#ifdef __UseArmManual__
+		CloseHatchDeploy_manual(Close);
+		#else
+		m_GoalHatch.Activate(!Close);
+		#endif
+	}
+	void CloseHatchGrabDeploy(bool Close)
+	{
+		#ifdef __UseArmManual__
+		CloseHatchGrabDeploy_manual(Close);
+		#else
+		m_GoalHatchGrip.Activate(!Close);
+		#endif
+	}
+};
 
   /***********************************************************************************************************************************/
  /*													FRC2019_Robot::Robot_Arm														*/
@@ -111,6 +501,7 @@ void FRC2019_Robot::Robot_Claw::BindAdditionalEventControls(bool Bind)
 FRC2019_Robot::Robot_Arm::Robot_Arm(FRC2019_Robot *parent,Rotary_Control_Interface *robot_control) : 
 	Rotary_Position_Control("Arm",robot_control,eArm),m_pParent(parent),m_Advance(false),m_Retract(false)
 {
+	m_RobotArmManager = std::make_shared<FRC2019_Robot::Robot_Arm_Manager>(this);
 }
 
 void FRC2019_Robot::Robot_Arm::TimeChange(double dTime_s)
@@ -122,28 +513,14 @@ void FRC2019_Robot::Robot_Arm::TimeChange(double dTime_s)
 	if (m_Advance ^ m_Retract)
 		SetCurrentLinearAcceleration(m_Advance?Accel:-Brake);
 
+	m_RobotArmManager->TimeChange(dTime_s);
 	__super::TimeChange(dTime_s);
-	#if 0
-	#ifdef __DebugLUA__
-	Dout(m_pParent->m_RobotProps.GetIntakeDeploymentProps().GetRotaryProps().Feedback_DiplayRow,7,"p%.1f",RAD_2_DEG(GetPos_m()));
-	#endif
-	#endif
-	#ifdef Robot_TesterCode
-	const FRC2019_Robot_Props &props=m_pParent->GetRobotProps().GetFRC2019RobotProps();
-	const double c_GearToArmRatio=1.0/props.ArmToGearRatio;
-	double Pos_m=GetPos_m();
-	double height=AngleToHeight_m(Pos_m);
-	DOUT4("Arm=%f Angle=%f %fft %fin",m_Physics.GetVelocity(),RAD_2_DEG(Pos_m*c_GearToArmRatio),height*3.2808399,height*39.3700787);
-	#endif
 	}
 
-double FRC2019_Robot::Robot_Arm::GetPosRest()
+void FRC2019_Robot::Robot_Arm::ResetPos()
 {
-	return 0.0;
-}
-void FRC2019_Robot::Robot_Arm::CloseRist(bool Close)
-{
-	m_pParent->m_RobotControl->CloseSolenoid(eRist,Close);
+	m_RobotArmManager->ResetPos();
+	__super::ResetPos();
 }
 
 void FRC2019_Robot::Robot_Arm::SetRequestedVelocity_FromNormalized(double Velocity)
@@ -156,7 +533,9 @@ void FRC2019_Robot::Robot_Arm::SetRequestedVelocity_FromNormalized(double Veloci
 //Declare event names for arm
 const char *csz_Arm_SetPosRest = "Arm_SetPosRest";
 const char *csz_Arm_SetPosHatch = "Arm_SetPoshatch";
-
+const char *csz_Arm_IntakeDeploy = "Arm_IntakeDeploy";
+const char *csz_Arm_HatchDeploy = "Arm_HatchDeploy";
+const char *csz_Arm_HatchGrabDeploy = "Arm_HatchGrabDeploy";
 
 void FRC2019_Robot::Robot_Arm::BindAdditionalEventControls(bool Bind)
 {
@@ -181,15 +560,30 @@ void FRC2019_Robot::Robot_Arm::BindAdditionalEventControls(bool Bind)
 			{	m_Retract = on;
 			});
 
-		em->EventOnOff_Map["Arm_Rist"].Subscribe(ehl, *this, &FRC2019_Robot::Robot_Arm::CloseRist);
+		em->EventOnOff_Map[csz_Arm_IntakeDeploy].Subscribe([&](bool on)
+			{	m_RobotArmManager->CloseIntake(on);
+			});
+		em->EventOnOff_Map[csz_Arm_HatchDeploy].Subscribe([&](bool on)
+			{	m_RobotArmManager->CloseHatchDeploy(on);
+			});
+		em->EventOnOff_Map[csz_Arm_HatchGrabDeploy].Subscribe([&](bool on)
+			{	m_RobotArmManager->CloseHatchGrabDeploy(on);
+			});
+		em->EventOnOff_Map[csz_Arm_IntakeDeploy_manual].Subscribe([&](bool on)
+		{	m_RobotArmManager->CloseIntake_manual(on);
+		});
+		em->EventOnOff_Map[csz_Arm_HatchDeploy_manual].Subscribe([&](bool on)
+		{	m_RobotArmManager->CloseHatchDeploy_manual(on);
+		});
+		em->EventOnOff_Map[csz_Arm_HatchGrabDeploy_manual].Subscribe([&](bool on)
+		{	m_RobotArmManager->CloseHatchGrabDeploy_manual(on);
+		});
 	}
 	else
 	{
 		//Note: I'm not going to worry about removing V2 events because these will auto cleanup
 		em->EventValue_Map["Arm_SetCurrentVelocity"].Remove(*this, &FRC2019_Robot::Robot_Arm::SetRequestedVelocity_FromNormalized);
 		em->EventOnOff_Map["Arm_SetPotentiometerSafety"].Remove(*this, &FRC2019_Robot::Robot_Arm::SetPotentiometerSafety);
-
-		em->EventOnOff_Map["Arm_Rist"]  .Remove(*this, &FRC2019_Robot::Robot_Arm::CloseRist);
 	}
 }
 
@@ -262,7 +656,7 @@ void FRC2019_Robot::TimeChange(double dTime_s)
 
 void FRC2019_Robot::CloseDeploymentDoor(bool Close)
 {
-	m_RobotControl->CloseSolenoid(eDeployment,Close);
+	m_RobotControl->CloseSolenoid(eWedgeDeploy,Close);
 }
 
 void FRC2019_Robot::BindAdditionalEventControls(bool Bind)
@@ -393,11 +787,11 @@ FRC2019_Robot_Properties::FRC2019_Robot_Properties() : m_RobotControls(&s_Contro
 //declared as global to avoid allocation on stack each iteration
 const char * const g_FRC2019_Controls_Events[] = 
 {
-	"Claw_SetCurrentVelocity","Claw_Close",
+	"Claw_SetCurrentVelocity",
 	"Claw_Grip","Claw_Squirt",
 	"Arm_SetCurrentVelocity","Arm_SetPotentiometerSafety",
-	csz_Arm_SetPosRest,csz_Arm_SetPosHatch,
-	"Arm_Rist","Arm_Advance","Arm_Retract",
+	csz_Arm_SetPosRest,csz_Arm_SetPosHatch,csz_Arm_HatchGrabDeploy,
+	csz_Arm_IntakeDeploy,csz_Arm_HatchDeploy,"Arm_Advance","Arm_Retract",
 	"Robot_CloseDoor",
 	"TestAuton","StopAuton"
 };
@@ -510,6 +904,7 @@ void FRC2019_Robot_Control::UpdateVoltage(size_t index,double Voltage)
 		SmartDashboard::PutNumber(SmartLabel.c_str(),Voltage);
 		if (SafetyLock)
 			Voltage=0.0;
+		//Do the real work
 		PWMSpeedController_UpdateVoltage(index,Voltage);
 	}
 }
@@ -518,29 +913,30 @@ void FRC2019_Robot_Control::CloseSolenoid(size_t index,bool Close)
 {
 	switch (index)
 	{
-		case FRC2019_Robot::eDeployment:
-			//DebugOutput("CloseDeploymentDoor=%d\n",Close);
-			m_Deployment=Close;
-			SmartDashboard::PutBoolean("Deployment",m_Deployment);
+		case FRC2019_Robot::eWedgeDeploy:
+			SmartDashboard::PutBoolean("Wedge", Close);
 			break;
-		case FRC2019_Robot::eClaw:
-			//DebugOutput("CloseClaw=%d\n",Close);
-			m_Claw=Close;
-			SmartDashboard::PutBoolean("Claw",m_Claw);
-			//This was used to test error with the potentiometer
-			//m_Potentiometer.SetBypass(Close);
+		case FRC2019_Robot::eHatchDeploy:
+			SmartDashboard::PutBoolean("Hatch", Close);
 			break;
-		case FRC2019_Robot::eRist:
-			//DebugOutput("CloseRist=%d\n",Close);
-			m_Rist=Close;
-			SmartDashboard::PutBoolean("Wrist",m_Rist);
+		case FRC2019_Robot::eHatchGrabDeploy:
+			SmartDashboard::PutBoolean("HatchGrip", Close);
+			break;
+		case FRC2019_Robot::eIntakeDeploy:
+			SmartDashboard::PutBoolean("Intake", Close);
 			break;
 	}
+	//do the real work
+	Solenoid_Close(index, Close);
+}
+
+bool FRC2019_Robot_Control::GetIsSolenoidOpen(size_t index) const
+{
+	return Solenoid_GetIsOpen(index);
 }
 
 
-FRC2019_Robot_Control::FRC2019_Robot_Control(bool UseSafety) : m_pTankRobotControl(&m_TankRobotControl),
-	m_Deployment(false),m_Claw(false),m_Rist(false)
+FRC2019_Robot_Control::FRC2019_Robot_Control(bool UseSafety) : m_pTankRobotControl(&m_TankRobotControl)
 {
 	//depreciated once we had smart dashboard
 	//m_TankRobotControl.SetDisplayVoltage(false); //disable display there so we can do it here
@@ -632,14 +1028,6 @@ void FRC2019_Robot_Control::Robot_Control_TimeChange(double dTime_s)
 	#ifdef _Win32
 	m_Potentiometer.SetTimeDelta(dTime_s);
 	#endif
-	//depreciated once we had smart dashboard
-	//display voltages
-	//DOUT2("l=%f r=%f a=%f r=%f D%dC%dR%d\n",m_TankRobotControl.GetLeftVoltage(),m_TankRobotControl.GetRightVoltage(),m_ArmVoltage,m_RollerVoltage,
-	//	m_Deployment,m_Claw,m_Rist
-	//	);
-	//These are no longer placed here
-	//SmartDashboard::PutNumber("ArmVoltage",m_ArmVoltage);
-	//SmartDashboard::PutNumber("RollerVoltage",m_RollerVoltage);
 }
 
 //void Robot_Control::UpdateVoltage(size_t index,double Voltage)

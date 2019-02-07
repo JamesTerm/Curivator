@@ -79,6 +79,11 @@ const char * const csz_FRC2019_Robot_AnalogInputs_Enum[] =
 	"arm_pot"
 };
 
+const char * const csz_FRC2019_Robot_Solenoid_Enum[] =
+{
+	"wedge","intake","hatch","hatch_grab"
+};
+
 ///This is a specific robot that is a robot tank and is composed of an arm, it provides addition methods to control the arm, and applies updates to
 ///the Robot_Control_Interface
 class FRC2019_Robot : public Tank_Robot
@@ -86,9 +91,10 @@ class FRC2019_Robot : public Tank_Robot
 	public:
 		enum SolenoidDevices
 		{
-			eDeployment,
-			eClaw,
-			eRist
+			eWedgeDeploy,
+			eIntakeDeploy,
+			eHatchDeploy,
+			eHatchGrabDeploy
 		};
 		enum SpeedControllerDevices
 		{
@@ -107,6 +113,10 @@ class FRC2019_Robot : public Tank_Robot
 			return Enum_GetValue<AnalogInputs>(value, csz_FRC2019_Robot_AnalogInputs_Enum, _countof(csz_FRC2019_Robot_AnalogInputs_Enum));
 		}
 
+		static SolenoidDevices GetSolenoidDevices_Enum(const char *value)
+		{
+			return Enum_GetValue<SolenoidDevices>(value, csz_FRC2019_Robot_Solenoid_Enum, _countof(csz_FRC2019_Robot_Solenoid_Enum));
+		}
 
 		FRC2019_Robot(const char EntityName[],FRC2019_Control_Interface *robot_control,bool UseEncoders=false);
 		IEvent::HandlerList ehl;
@@ -124,8 +134,6 @@ class FRC2019_Robot : public Tank_Robot
 			public:
 				Robot_Claw(FRC2019_Robot *parent,Rotary_Control_Interface *robot_control);
 				IEvent::HandlerList ehl;
-				//public access needed for goals
-				void CloseClaw(bool Close);
 				//Using meaningful terms to assert the correct direction at this level
 				void Grip(bool on);
 				void Squirt(bool on);
@@ -142,15 +150,14 @@ class FRC2019_Robot : public Tank_Robot
 				FRC2019_Robot * const m_pParent;
 				bool m_Grip,m_Squirt;
 		};
+		class Robot_Arm_Manager;  //forward declare
 		class Robot_Arm : public Rotary_Position_Control
 		{
 			public:
 				Robot_Arm(FRC2019_Robot *parent,Rotary_Control_Interface *robot_control);
 				IEvent::HandlerList ehl;
-				//The parent needs to call initialize
-				double GetPosRest();
-				void CloseRist(bool Close);
-			protected:
+				virtual void ResetPos();
+		protected:
 				//Intercept the time change to obtain current height as well as sending out the desired velocity
 				virtual void BindAdditionalEventControls(bool Bind);
 				//events are a bit picky on what to subscribe so we'll just wrap from here... also great place for breakpoint
@@ -158,13 +165,14 @@ class FRC2019_Robot : public Tank_Robot
 
 				void SetPotentiometerSafety(bool DisableFeedback) {__super::SetPotentiometerSafety(DisableFeedback);}
 				virtual void TimeChange(double dTime_s);
-
 			private:
 				#ifndef _Win32
 				typedef Rotary_Position_Control __super;
 				#endif
+				friend Robot_Arm_Manager;
 				FRC2019_Robot * const m_pParent;
 				bool m_Advance, m_Retract;
+				std::shared_ptr<Robot_Arm_Manager> m_RobotArmManager; //pointer to implementation
 		};
 
 		//Accessors needed for setting goals
@@ -226,6 +234,8 @@ class FRC2019_Robot_Control : public frc::RobotControlCommon, public FRC2019_Con
 		virtual void UpdateVoltage(size_t index, double Voltage);
 		virtual void CloseSolenoid(size_t index,bool Close);
 		virtual void OpenSolenoid(size_t index,bool Open) {CloseSolenoid(index,!Open);}
+		virtual bool GetIsSolenoidOpen(size_t index) const;
+
 	protected: //from Tank_Drive_Control_Interface
 		virtual void Reset_Encoders() {m_pTankRobotControl->Reset_Encoders();}
 		virtual void GetLeftRightVelocity(double &LeftVelocity,double &RightVelocity) {m_pTankRobotControl->GetLeftRightVelocity(LeftVelocity,RightVelocity);}
@@ -253,8 +263,7 @@ class FRC2019_Robot_Control : public frc::RobotControlCommon, public FRC2019_Con
 			{	return FRC2019_Robot::GetAnalogInputs_Enum(name);
 			}
 			virtual size_t RobotControlCommon_Get_DoubleSolenoid_EnumValue(const char *name) const
-			{	//return Curivator_Robot::GetSolenoidDevices_Enum(name);
-				return 0;
+			{	return FRC2019_Robot::GetSolenoidDevices_Enum(name);
 			}
 
 	protected: //from FRC2019_Control_Interface
@@ -271,9 +280,6 @@ class FRC2019_Robot_Control : public frc::RobotControlCommon, public FRC2019_Con
 		//Base::EventMap* m_EventMap=nullptr;  <---TODO see if we need this
 
 		double m_ArmMaxSpeed;
-		//cache voltage values for display   -Depreciated
-		//double m_ArmVoltage,m_RollerVoltage;
-		bool m_Deployment,m_Claw,m_Rist;
 	private:
 		//Note: these may be arrayed if we have more pots
 		KalmanFilter m_KalFilter_Arm;

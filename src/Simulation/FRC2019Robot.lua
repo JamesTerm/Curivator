@@ -44,12 +44,13 @@ MainRobot = {
 		-- {
 		-- 	id_1 = { name= "CameraLED", channel=1}
 		-- },
-		-- double_solenoid =
-		-- {
-		-- 	id_1 = { name="use_low_gear",    forward_channel=2, reverse_channel=1},
-		-- 	id_2 = { name="fork_left",    forward_channel=3, reverse_channel=4},
-		-- 	id_3 = { name="fork_right",    forward_channel=5, reverse_channel=6},
-		-- },
+		double_solenoid =
+		{
+			id_1 = { name="wedge",    forward_channel=2, reverse_channel=1},
+			id_2 = { name="intake",    forward_channel=3, reverse_channel=4},
+			id_3 = { name="hatch",    forward_channel=5, reverse_channel=6},
+			id_4 = { name="hatch_grab",    forward_channel=7, reverse_channel=8},
+		},
 		-- digital_input =
 		-- {
 		-- 	--These channels must be unique to digital input encoder channels as well
@@ -230,15 +231,16 @@ MainRobot = {
 			Arm_SetPosRest = {type="joystick_button", key=2, keyboard='l', on_off=false},
 			Arm_SetPoshatch = {type="joystick_button", key=1, keyboard=';', on_off=false},
 			Arm_SetCurrentVelocity = {type="joystick_analog", key=2, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=0.0},
-			Arm_Rist={type="joystick_button", key=5, on_off=true},
+			Arm_IntakeDeploy={type="joystick_button", key=5, keyboard='i', on_off=true},
 			Arm_Advance={type="keyboard", key='k', on_off=true},
 			Arm_Retract={type="keyboard", key='j', on_off=true},
 			
 			--Claw_SetCurrentVelocity  --not used
-			Claw_Close =	 {type="joystick_button", key=6, on_off=true},
+			Arm_HatchDeploy =	 {type="joystick_button", key=6, keyboard='h', on_off=true},
+			Arm_HatchGrabDeploy={type="joystick_button", key=3, keyboard='o', on_off=true},
 			Claw_Grip =		 {type="joystick_button", key=8, on_off=true},
 			--Claw_Squirt =	 {type="joystick_button", key=7, on_off=true},
-			Robot_CloseDoor= {type="joystick_button", key=9, on_off=true}
+			Robot_CloseDoor= {type="joystick_button", key=9, keyboard='u', on_off=true}
 		},
 		
 		Joystick_2 =
