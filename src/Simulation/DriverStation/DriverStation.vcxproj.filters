@@ -41,7 +41,7 @@
     <ClCompile Include="DriverStation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\main\cpp\AutonMain.cpp">
+    <ClCompile Include="..\..\main\cpp\RobotAssem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\main\cpp\FRC2019_Goals.cpp">

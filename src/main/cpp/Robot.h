@@ -16,7 +16,7 @@
 #include "Systems/Drive.h"
 #include "Controls/AxisControl.h"
 #include "Autonomi/Autons.h"
-#include "AutonMain.h"
+#include "RobotAssem.h"
 
 using namespace frc;
 using namespace System;
@@ -43,5 +43,5 @@ class Robot : public SampleRobot
 	    Drive *m_drive;
 	    ActiveCollection *m_activeCollection; //!< Pointer to the only instantiation of the ActiveCollection Class in the program
 	    const string m_driveStraight = "drive";
-		AutonMain m_Robot;
+		RobotAssem m_Robot;
 };

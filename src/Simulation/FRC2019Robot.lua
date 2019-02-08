@@ -149,6 +149,10 @@ MainRobot = {
 	},
 	robot_settings =
 	{
+		--These heights represent elevator height which correspond to height observed- Change as needed
+		hatch1_height=5,
+		hatch2_height=33,
+		hatch3_height=61.5,   --max height (and falls short but is ok)
 		arm =
 		{
 			is_closed=1,
@@ -164,16 +168,25 @@ MainRobot = {
 			voltage_multiply=1.0,			--May be reversed
 			encoder_to_wheel_ratio=1.0,
 			Arm_SetPotentiometerSafety=true,	
-			max_speed=8.8,	--loaded max speed (see sheet) which is 2.69 rps
-			accel=10.0,						--We may indeed have a two button solution (match with max accel)
+			-- Using speed of 14400, about 0.15 nm of torque (about 21 oz-in)
+			-- 8:50 1st stage = 0.16
+			-- 18:24 2nd stage = 0.75
+			-- 32:52 3rd stage = 0.62
+			-- 4608/62400 / 192/192= 24 / 325 final gear ratio
+			-- 14400 / 60 = 240 * gr = 17.72 rps
+			-- to linear is pi * d (1.26) = 3.95 inch per revolution
+			-- =69.994 about 70 ips
+			-- We should achieve full scale less than a second
+			max_speed=70,	
+			accel=100.0,						--todo find out why this has to be so much greater
 			brake=10.0,
-			max_accel_forward=24,			--just go with what feels right (up may need more)
-			max_accel_reverse=24,
+			max_accel_forward=140,			--just go with what feels right (up may need more)
+			max_accel_reverse=140,
 			predict_up=.200,
 			predict_down=.200,
 			using_range=1,					--Warning Only use range if we have a potentiometer!
 			--These min/max in inch units
-			max_range= 36,
+			max_range= 61.5,  --confirmed range
 			--Note the sketch used -43.33, but tests on actual assembly show -46.12
 			min_range= 0,
 			pot_offset=0,
@@ -181,6 +194,7 @@ MainRobot = {
 			use_aggressive_stop = 'yes',
 			forward_deadzone=0.37,
 			reverse_deadzone=0.37,
+			--TODO 775 pro, but not needed for current simulated pot
 			motor_specs =
 			{
 				wheel_mass=Pounds2Kilograms * 16.27,
@@ -211,10 +225,12 @@ MainRobot = {
 	},
 	controls =
 	{
-		slotlist = {slot_1="logitech dual action"},
+		slotlist = {slot_1="developer"},
+		--slotlist = {slot_1="operator"},
+		--slotlist = {slot_1="driver",slot_2="operator"},
 		Joystick_1 =
 		{
-			control = "logitech dual action",
+			control = "developer",
 			--Joystick_SetLeftVelocity = {type="joystick_analog", key=1, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=3.0},
 			--Joystick_SetRightVelocity = {type="joystick_analog", key=5, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=3.0},
 			--Analog_Turn = {type="joystick_analog", key=0, is_flipped=false, multiplier=1.0, filter=0.3, curve_intensity=1.0},
@@ -245,52 +261,38 @@ MainRobot = {
 		
 		Joystick_2 =
 		{
-			control = "airflo",
+			control = "driver",
 			--Joystick_SetLeftVelocity = {type="joystick_analog", key=1, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=3.0},
-			--Joystick_SetRightVelocity = {type="joystick_analog", key=2, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=3.0},
-			Analog_Turn = {type="joystick_analog", key=0, is_flipped=false, multiplier=1.0, filter=0.3, curve_intensity=1.0},
-			Joystick_SetCurrentSpeed_2 = {type="joystick_analog", key=1, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=0.0},
+			--Joystick_SetRightVelocity = {type="joystick_analog", key=5, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=3.0},
+			--Analog_Turn = {type="joystick_analog", key=0, is_flipped=false, multiplier=1.0, filter=0.3, curve_intensity=1.0},
+			--Joystick_SetCurrentSpeed_2 = {type="joystick_analog", key=1, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=0.0},
+			-- Joystick_FieldCentric_XAxis = {type="joystick_analog", key=0, is_flipped=false, multiplier=1.0, filter=0.3, curve_intensity=1.0},
+			-- Joystick_FieldCentric_YAxis = {type="joystick_analog", key=1, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=0.0},
+			-- Analog_Turn = {type="joystick_analog", key=5, is_flipped=false, multiplier=1.0, filter=0.3, curve_intensity=1.0},
+			-- FieldCentric_Enable = {type="joystick_button", key=4, on_off=false},
+
 			--scaled down to 0.5 to allow fine tuning and a good top acceleration speed (may change with the lua script tweaks)
-			POV_Turn =  {type="joystick_analog", key=8, is_flipped=false, multiplier=1.0, filter=0.0, curve_intensity=0.0},
-			--Turn_180 = {type="joystick_button", key=7, on_off=false},
-			
-			Arm_SetPos0feet = {type="joystick_button", key=1, keyboard='y', on_off=false},
-			Arm_SetPos3feet = {type="joystick_button", key=3, keyboard='u', on_off=false},
-			Arm_SetPos6feet = {type="joystick_button", key=2, keyboard='l', on_off=false},
-			Arm_SetPos9feet = {type="joystick_button", key=4, keyboard=';', on_off=false},
-			Arm_SetCurrentVelocity = {type="joystick_analog", key=2, is_flipped=true, multiplier=0.6, filter=0.1, curve_intensity=3.0},
-			Arm_Rist={type="joystick_button", key=5, keyboard='r', on_off=true},
-			Arm_Advance={type="keyboard", key='k', on_off=true},
-			Arm_Retract={type="keyboard", key='j', on_off=true},
-			
-			--Claw_SetCurrentVelocity  --not used
-			Claw_Close =	 {type="joystick_button", key=6, keyboard='c', on_off=true},
-			Claw_Grip =		 {type="joystick_button", key=8, keyboard='i', on_off=true},
-			Claw_Squirt =	 {type="joystick_button", key=7, keyboard='h', on_off=true},
-			Robot_CloseDoor= {type="joystick_button", key=9, keyboard='o', on_off=true}
+			-- POV_Turn =  {type="joystick_analog", key=8, is_flipped=false, multiplier=1.0, filter=0.0, curve_intensity=0.0},
+			-- Turn_180 = {type="joystick_button", key=7, on_off=false},
 		},
 
 		Joystick_3 =
 		{
-			control = "gamepad f310 (controller)",
-			Analog_Turn = {type="joystick_analog", key=0, is_flipped=false, multiplier=1.0, filter=0.3, curve_intensity=1.0},
-			Joystick_SetCurrentSpeed_2 = {type="joystick_analog", key=1, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=0.0},
-			--scaled down to 0.5 to allow fine tuning and a good top acceleration speed (may change with the lua script tweaks)
-			POV_Turn =  {type="joystick_analog", key=8, is_flipped=false, multiplier=1.0, filter=0.0, curve_intensity=0.0},
-			--Turn_180 = {type="joystick_button", key=7, on_off=false},
+			control = "operator",
 			
-			Arm_SetPos0feet = {type="joystick_button", key=1, on_off=false},
-			Arm_SetPos3feet = {type="joystick_button", key=3, on_off=false},
-			Arm_SetPos6feet = {type="joystick_button", key=2, on_off=false},
-			Arm_SetPos9feet = {type="joystick_button", key=4, on_off=false},
-			Arm_SetCurrentVelocity = {type="joystick_analog", key=4, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=3.0},
-			Arm_Rist={type="joystick_button", key=5, on_off=true},
+			Arm_SetPosRest = {type="joystick_button", key=2, keyboard='l', on_off=false},
+			Arm_SetPoshatch = {type="joystick_button", key=1, keyboard=';', on_off=false},
+			Arm_SetCurrentVelocity = {type="joystick_analog", key=2, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=0.0},
+			Arm_IntakeDeploy={type="joystick_button", key=5, keyboard='i', on_off=true},
+			Arm_Advance={type="keyboard", key='k', on_off=true},
+			Arm_Retract={type="keyboard", key='j', on_off=true},
 			
-			Claw_SetCurrentVelocity = {type="joystick_analog", key=2, is_flipped=true, multiplier=1.0, filter=0.1, curve_intensity=0.0},
-			Claw_Close =	 {type="joystick_button", key=6, on_off=true},
-			Claw_Grip =		 {type="joystick_button", key=9, on_off=true},
-			Claw_Squirt =	 {type="joystick_button", key=7, on_off=true},
-			Robot_CloseDoor= {type="joystick_button", key=8, on_off=true}
+			--Claw_SetCurrentVelocity  --not used
+			Arm_HatchDeploy =	 {type="joystick_button", key=6, keyboard='h', on_off=true},
+			Arm_HatchGrabDeploy={type="joystick_button", key=3, keyboard='o', on_off=true},
+			Claw_Grip =		 {type="joystick_button", key=8, on_off=true},
+			--Claw_Squirt =	 {type="joystick_button", key=7, on_off=true},
+			Robot_CloseDoor= {type="joystick_button", key=9, keyboard='u', on_off=true}
 		},
 	},
 		
